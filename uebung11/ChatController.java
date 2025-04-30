@@ -17,7 +17,7 @@ import ch.zhaw.freelancer4u.service.UserService;
 import ch.zhaw.freelancer4u.tools.FreelancerTools;
 
 @RestController
-@RequestMapping("/chatbot")
+@RequestMapping("/api")
 public class ChatController {
     @Autowired
     JobRepository jobRepository;
@@ -36,7 +36,7 @@ public class ChatController {
 
     ChatMemory chatMemory;
 
-    @GetMapping("/api")
+    @GetMapping("/chat")
     public ResponseEntity<String> chat(@RequestParam(required = true) String message) {
         if (!userService.userHasRole("admin")) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
