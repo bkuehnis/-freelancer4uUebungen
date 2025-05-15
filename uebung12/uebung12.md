@@ -328,7 +328,7 @@ Damit die statische Analyse durchgeführt werden kann, muss die Applikation lauf
 - Führe den Befehl im Terminal in Visual Studio Code aus.
 
 **Beispiel-Befehl:**  
-- **Windows:**  
+- **Windows** (im cmd ausführen):  
 ```bash
   mvnw verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=freelancer4u -Dsonar.token=<YOUR_TOKEN>
 ```
