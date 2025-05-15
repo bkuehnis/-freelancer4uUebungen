@@ -30,22 +30,31 @@ In dieser Übung wird das Framework [Spring AI](https://spring.io/projects/sprin
 
 ### 1.1 `pom.xml` anpassen
 
+Füge folgende **dependencyManagement** als sibling von `<dependencies>`-Blocks hinzu: 
+
+```xml
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>1.0.0-M8</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+```
+
 Füge folgende **Dependencies** innerhalb des `<dependencies>`-Blocks hinzu: 
 
 ```xml
 <dependency>
     <groupId>org.springframework.ai</groupId>
-    <artifactId>spring-ai-bom</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-    <type>pom</type>
-    <scope>import</scope>
-</dependency>
-
-<dependency>
-    <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-starter-model-openai</artifactId>
 </dependency>
 ```
+
 Füge diese **Repositories** innerhalb des `<repositories>` -Blocks hinzu:
 
 ```xml
