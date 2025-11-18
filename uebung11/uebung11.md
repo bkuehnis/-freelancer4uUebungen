@@ -30,22 +30,6 @@ In dieser Übung wird das Framework [Spring AI](https://spring.io/projects/sprin
 
 ### 1.1 `pom.xml` anpassen
 
-Füge folgende **dependencyManagement** als sibling von `<dependencies>`-Blocks hinzu: 
-
-```xml
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.ai</groupId>
-				<artifactId>spring-ai-bom</artifactId>
-				<version>1.0.0-M8</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
-```
-
 Füge folgende **Dependencies** innerhalb des `<dependencies>`-Blocks hinzu: 
 
 ```xml
@@ -53,32 +37,6 @@ Füge folgende **Dependencies** innerhalb des `<dependencies>`-Blocks hinzu:
     <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-starter-model-openai</artifactId>
 </dependency>
-```
-
-Füge diese **Repositories** innerhalb des `<repositories>` -Blocks hinzu:
-
-```xml
-<repositories>
-  <repository>
-    <id>spring-snapshots</id>
-    <name>Spring Snapshots</name>
-    <url>https://repo.spring.io/snapshot</url>
-    <releases>
-      <enabled>false</enabled>
-    </releases>
-  </repository>
-  <repository>
-    <name>Central Portal Snapshots</name>
-    <id>central-portal-snapshots</id>
-    <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-    <releases>
-      <enabled>false</enabled>
-    </releases>
-    <snapshots>
-      <enabled>true</enabled>
-    </snapshots>
-  </repository>
-</repositories>
 ```
 
 
@@ -94,7 +52,7 @@ logging.level.org.springframework.ai.chat.client.advisor=DEBUG
 
 ## ✨ Teil 2: Titelgenerierung mit Spring AI
 
-Im Teil 2 wird anhand von [Chat Models](https://docs.spring.io/spring-ai/reference/api/chatmodel.html) den Titel, des Jobs anhand der Beschreibung angepasst.
+Im Teil 2 wird anhand von [Chat Models](https://docs.spring.io/spring-ai/reference/api/chatmodel.html) den Titel, des Jobs anhand der Beschreibung bei der Erstellung angepasst.
 
 ### 2.1 AI-Model in `JobController` einbinden
 Öffne `src/main/java/ch/zhaw/freelancer4u/controller/JobController.java` und füge das AI-Model per Dependency Injection ein:
@@ -142,6 +100,10 @@ void setupMockAiResponse() {
         .getText()).thenReturn(TEST_TITLE);
 }
 ```
+
+### 2.4 Testen
+Erstelle einen neuen Job. Überprüffe, ob der Titel nach der Erstellung angepasst wurde.
+
 ## ✨ Teil 3: Chatbot
 Ziel dieses Teil ist es einen Chatbot zu erstellen, mit welchem die einen geigneten Job finden kann. Zusätzlich soll es möglich sein über den Chatbot einen Job und die ensprechende Company zu erstellen.
 
@@ -173,6 +135,7 @@ Kopiere die folgenden Dateien in die entsprechenden Ordner:
 | `CreateRandomJobsController.java` | `src/main/java/ch/zhaw/freelancer4u/controller/` | Ein REST-Controller, der zufällige Jobs generieren und speichern kann – nützlich für Tests, Demos oder initiale Datenbefüllung. |
 | `CreateRandomJobsControllerTest.java` | `src/test/java/ch/zhaw/freelancer4u/controller/` | Ein JUnit-Test für den `CreateRandomJobsController`. Stellt sicher, dass das Generieren und Speichern von zufälligen Jobs korrekt funktioniert. |
 | `+page.svelte` | `frontend/src/routes/chat/` | Die Svelte-Komponente für die Chat-Seite. Hier wird die Benutzeroberfläche für den KI-Chat dargestellt, z. B. ein Eingabefeld für Nachrichten und ein Anzeigebereich für Antworten. |
+| `+page.server.js` | `frontend/src/routes/chat/` | Die Svelte-Komponente für die serverseitige Chat-Seite. Hier wird das Spring Boot Backend aufgerufen. |
 
 
 
@@ -181,7 +144,7 @@ Kopiere die folgenden Dateien in die entsprechenden Ordner:
 Öffne `frontend/src/routes/+layout.svelte` und füge einen Menüpunkt zum Chat ein, z. B.:
 
 ```html
-<a href="/chat">💬 Chat</a>
+<a class="nav-link" href="/chat">💬 Chat</a>
 ```
 
 ### 3.4 Erweiterung von `FreelancerTools.java`

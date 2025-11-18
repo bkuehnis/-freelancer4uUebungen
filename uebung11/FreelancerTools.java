@@ -6,7 +6,6 @@ import org.springframework.ai.tool.annotation.Tool;
 
 import ch.zhaw.freelancer4u.model.Company;
 import ch.zhaw.freelancer4u.model.Job;
-import ch.zhaw.freelancer4u.model.JobType;
 import ch.zhaw.freelancer4u.repository.JobRepository;
 import ch.zhaw.freelancer4u.service.CompanyService;
 

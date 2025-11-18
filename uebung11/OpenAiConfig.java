@@ -17,6 +17,8 @@ public class OpenAiConfig {
 
     @Bean
     public ChatClient chatClient() {
-        return ChatClient.builder(chatModel).defaultAdvisors(new MessageChatMemoryAdvisor(MessageWindowChatMemory.builder().build()), new SimpleLoggerAdvisor()).build();
+        MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(MessageWindowChatMemory.builder().build()).build();
+
+        return ChatClient.builder(chatModel).defaultAdvisors(chatMemoryAdvisor, new SimpleLoggerAdvisor()).build();
     }
 }
