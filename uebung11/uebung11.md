@@ -42,12 +42,24 @@ Füge folgende **Dependencies** innerhalb des `<dependencies>`-Blocks hinzu:
 
 ### 1.2 OpenAI API Key einrichten
 
-Füge in `src/main/resources/application.properties` folgende Zeilen hinzu und ersetze dabei **<openai-api-key>**. Den API-Key findest du auf Moodle:
+Füge in `src/main/resources/application.properties` folgende Zeilen hinzu:
 
 ```properties
-spring.ai.openai.api-key=<openai-api-key>
+spring.ai.openai.api-key=${OPEN_AI_KEY}
 #For debugging (optional):
 logging.level.org.springframework.ai.chat.client.advisor=DEBUG
+```
+
+In der Datei `.vscode/launch.json` fügt bei `env` das Propertie `"OPEN_AI_KEY": "..."` hinzu, wobei ihr den Wert `...` mit dem Open AI Key von Moodle ersetzten müsst.
+
+Sollte wie folgt aussehen:
+
+```json
+"env": {
+                "MONGODB_URI": "...",
+                "AUTH0_DOMAIN": "...",
+                "OPEN_AI_KEY": "..."
+            }
 ```
 
 ## ✨ Teil 2: Titelgenerierung mit Spring AI
