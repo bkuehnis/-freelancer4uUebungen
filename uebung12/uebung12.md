@@ -41,48 +41,62 @@ Ein Beispiel mit einer validen Domain.
 
 ---
 
-### 1.1 Validierung im Frontend
+### 1.1 Validierung im Frontend Serverseitig
 
-Als erstes wird die API im Frontend verwenden. Dabei benutzen wir die Library axios. Die folgende Funktion muss in der Datei `companies/ +page.svelte` vor der Funktion `createCompany` hinzugefügt werden.
+Als erstes wird die API im Frontend serverseitig verwenden. Dabei benutzen wir die Library axios. Die folgende Funktion muss in der Datei `companies/ +page.server.js` bei der Funktion `actions` `createCompany` ändert sich der Code wie folgt.
 ```javascript
-function validateEmailAndCreateCompany(){
-    var config = {
-            method: "get",
-            url: "https://disify.com/api/email/" + company.email
+createCompany: async ({ request, locals }) => {
+
+        const jwt_token = locals.jwt_token;
+
+        if (!jwt_token) {
+            throw error(401, 'Authentication required');
+        }
+
+        const data = await request.formData();
+        const company = {
+            name: data.get('name'),
+            email: data.get('email')
         };
 
-    axios(config)
-        .then(function (response) {
-            console.log("Validated email "+ company.email);
-            console.log(response.data);
-            if (response.data.format && !response.data.disposable 
-               && response.data.dns){
-                createCompany();
-            } else {
-                alert("Email " + company.email + " is not valid.");
+        try {
+
+            // Validate email first
+            const validationResponse = await axios({
+                method: "get",
+                url: `https://disify.com/api/email/${company.email}`
+            });
+
+            console.log("Validated email " + company.email);
+            console.log(validationResponse.data);
+
+            if (!validationResponse.data.format || validationResponse.data.disposable || !validationResponse.data.dns) {
+                return { success: false, error: `Email ${company.email} is not valid.` };
             }
-        })
-        .catch(function (error) {
-            alert("Could not validate email");
-            console.log(error);
-        });
-}
-```
-Anschliessend muss noch der on:click event des Submits Button geändert werden. Damit beim on:click die Validierungsfunktion "validateEmailAndcreateCompany" aufgerufen wird.
 
-```html
-<button type="button" class="btn btn-primary" onclick={validateEmailAndCreateCompany}>Submit</button>
+            await axios({
+                method: "post",
+                url: `${API_BASE_URL}/api/company`,
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + jwt_token,
+                },
+                data: company,
+            });
+            return { success: true };
+        } catch (error) {
+            console.log('Error creating company:', error);
+            return { success: false, error: 'Could not create company' };
+        }
+    }
 ```
 
-Wenn eine ungültige oder temporäre E-Mail-Adresse verwendet wird, wird folgende Meldung angezeigt:
+Wenn eine ungültige oder temporäre E-Mail-Adresse verwendet wird z.B. `benjamin@example.com`, wird folgende Meldung angezeigt:
 ![Domain "example.com" gilt als temporäre Domain und somit als ungültige E-Mail-Adresse.](image.png)
 
-### 1.2 Umgehen der Client-Validierung
 
-Die Validierung findet bisher ausschliesslich im Frontend statt. Diese kann vom Benutzer umgangen werden, indem er den Client-Code verändert. Hierfür gibt es mehrere Möglichkeiten, eine davon besteht darin, dass die API um eine Company zu erstellen via Postman aufgerufen wird.
-
-### 1.3 Validierung im Backend
-Um sicherzustellen, dass die E-Mail-Adresse beim Erstellen einer Company gültig ist, werden wir dieselbe API im Backend erneut aufrufen. Die Validierung im Frontend bleibt dennoch sinnvoll, damit der Benutzer schnelleres Feedback erhält und die Applikation weniger Traffic für das Backend verursacht.
+### 1.2 Validierung im Backend
+Theoretisch wäre es möglich, dass das Frontend von einer anderen Applikation, wie z. B. einer mobilen App, genutzt wird. Um sicherzustellen, dass die E-Mail-Adresse beim Erstellen einer Company gültig ist, werden wir dieselbe API im Backend erneut aufrufen.
 Dazu müssen die folgenden Pakete installiert werden: `spring-boot-starter-webflux`. 
 ![dependency](<dependency.png>)
 
@@ -223,14 +237,29 @@ Folgende Maven dependency muss hinzugefügt werden: `spring-boot-starter-mail`
 
 In der Datei `application.properties` füge folgende Properties hinzu und ändere den Wert von Username mit deiner E-Mail und password mit dem Apps Password, welches du erstellt hast.
 
-```
+```properties
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
-spring.mail.username=[DEINE EMAIL]@gmail.com
-spring.mail.password=[DEIN APP PASSWORD]
+spring.mail.username=${GMAIL_EMAIL}
+spring.mail.password=${GMAIL_APP_PASSWORD}
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 spring.mail.properties.mail.debug=true
+
+```
+
+In der Datei `.vscode/launch.json` fügt bei `env` das Propertie `"GMAIL_EMAIL": "..."` und `"GMAIL_APP_PASSWORD": "..."` hinzu, wobei ihr den Wert `...` mit dem Open AI Key von Moodle ersetzten müsst.
+
+Sollte wie folgt aussehen:
+
+```json
+"env": {
+                "MONGODB_URI": "...",
+                "AUTH0_DOMAIN": "...",
+                "OPEN_AI_KEY": "...",
+                "GMAIL_EMAIL" : "...",
+                "GMAIL_APP_PASSWORD": "..."
+            }
 ```
  
 Anschliessend erstellen wir die Model Klasse `Mail`.
