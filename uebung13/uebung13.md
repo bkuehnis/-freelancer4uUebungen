@@ -21,15 +21,34 @@ Diese Übung besteht aus drei Teilen:
 
 ## 🛠️ Teil 1: Anbindung von Svelte MCP Server
 
-Installieren Sie den MCP Client https://www.jan.ai/.
+- Installieren Sie den MCP Client https://www.jan.ai/.
+- In Jan unter Settings -> Model Provider -> OpenAI Settings -> füge den API Key hinzu (findest du auf Moodle Woche 11)
 
-Machen Sie sich mit dem Svelte MCP Server vertraut: https://mcp.svelte.dev/mcp.
+![alt text](model_provider.png)
+![alt text](model_provider_api_key.png) 
 
-Fügen Sie den Svelte MCP Server zu Jan hinzu. Der MCP Server ist unter https://mcp.svelte.dev/mcp erreichbar.
+- In Jan unter Settings -> MCP Servers -> '+' füge den svlete MCP Server hinzu 
+  
+![alt text](add_mcp_jan.png)
+![alt text](add_svelte_mcp_server-1.png)
 
-Anleitung unter: https://www.jan.ai/docs/desktop/mcp
+- Server Name: https://mcp.svelte.dev/mcp
+- Transport Type: HTTP
+- URL: https://mcp.svelte.dev/mcp
+
+Eine Beschreibung der Tools des Svelte MCP Server findest du unter https://mcp.svelte.dev/mcp.
+
 
 **Testen Sie die Anbindung.**
+- Öffne einen neuen Chat und überprüfe, dass der Svelte MCP Server verfügbar ist.
+![alt text](1_chat_with_svelte_mcp_tool.png) 
+
+- Erstelle eine Demo im Playground. Dabei muss du den Svelte-MCP-Server erlauben einen Request auszuführen.
+![alt text](2_chat_with_svelte_mcp_tool.png) 
+![alt text](3_chat_with_svelte_mcp_tool.png) 
+
+- Am Ende sollte eine Link mit der gewünschten Demo erstellt worden sein. 
+![alt text](4_chat_with_svelte_mcp_tool.png)
 
 ---
 
