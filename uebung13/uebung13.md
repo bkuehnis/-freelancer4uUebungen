@@ -3,7 +3,7 @@
 Themen: Erstellung, Absicherung und Deployment eines MCP-Servers
 
 Diese Übung besteht aus drei Teilen:  
-1. **Anbindung von Svelte MCP Server:** Installieren Sie https://www.jan.ai/ und binden Sie den Svelte MCP Server an https://svelte.dev/docs/mcp/overview.  
+1. **Anbindung von Svelte MCP Server:** Installiere https://www.jan.ai/ und binde den Svelte MCP Server an https://svelte.dev/docs/mcp/overview.  
 2. **Erstellung eines MCP Servers:** Im Spring Boot Backend wird der MCP Server erstellt.  
 3. **MCP-Server erweitern – Job erstellen:** Passe den MCP Server an, dass es möglich ist jobs zu erstellen.
 
@@ -21,7 +21,7 @@ Diese Übung besteht aus drei Teilen:
 
 ## 🛠️ Teil 1: Anbindung von Svelte MCP Server
 
-- Installieren Sie den MCP Client https://www.jan.ai/.
+- Installiere den MCP Client https://www.jan.ai/.
 - In Jan unter Settings -> Model Provider -> OpenAI Settings -> füge den API Key hinzu (findest du auf Moodle Woche 11)
 
 ![alt text](model_provider.png)
@@ -39,15 +39,15 @@ Diese Übung besteht aus drei Teilen:
 Eine Beschreibung der Tools des Svelte MCP Server findest du unter https://mcp.svelte.dev/mcp.
 
 
-**Testen Sie die Anbindung.**
+**Teste die Anbindung.**
 - Öffne einen neuen Chat und überprüfe, dass der Svelte MCP Server verfügbar ist.
 ![alt text](1_chat_with_svelte_mcp_tool.png) 
 
-- Erstelle eine Demo im Playground. Dabei muss du den Svelte-MCP-Server erlauben einen Request auszuführen.
+- Erstelle eine Demo im Playground. Dabei musst du den Svelte-MCP-Server erlauben einen Request auszuführen.
 ![alt text](2_chat_with_svelte_mcp_tool.png) 
 ![alt text](3_chat_with_svelte_mcp_tool.png) 
 
-- Am Ende sollte eine Link mit der gewünschten Demo erstellt worden sein. 
+- Am Ende sollte ein Link mit der gewünschten Demo erstellt worden sein. 
 ![alt text](4_chat_with_svelte_mcp_tool.png)
 
 ---
@@ -56,7 +56,7 @@ Eine Beschreibung der Tools des Svelte MCP Server findest du unter https://mcp.s
 
 ### 2.1 `pom.xml` anpassen
 
-Fügen Sie das `dependencyManagement` hinzu:
+Füge das `dependencyManagement` hinzu:
 
 ```xml
 <dependencyManagement>
@@ -72,7 +72,7 @@ Fügen Sie das `dependencyManagement` hinzu:
 </dependencyManagement>
 ```
 
-Fügen Sie folgende Dependencies hinzu:
+Füge folgende Dependencies hinzu:
 
 ```xml
 <dependency>
@@ -86,43 +86,9 @@ Fügen Sie folgende Dependencies hinzu:
 </dependency>
 ```
 
-Fügen Sie folgende Repositories hinzu:
-
-```xml
-<repositories>
-    <repository>
-        <id>spring-milestones</id>
-        <name>Spring Milestones</name>
-        <url>https://repo.spring.io/milestone</url>
-        <snapshots>
-            <enabled>false</enabled>
-        </snapshots>
-    </repository>
-    <repository>
-        <id>spring-snapshots</id>
-        <name>Spring Snapshots</name>
-        <url>https://repo.spring.io/snapshot</url>
-        <releases>
-            <enabled>false</enabled>
-        </releases>
-    </repository>
-    <repository>
-        <id>central-portal-snapshots</id>
-        <name>Central Portal Snapshots</name>
-        <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        <releases>
-            <enabled>false</enabled>
-        </releases>
-        <snapshots>
-            <enabled>true</enabled>
-        </snapshots>
-    </repository>
-</repositories>
-```
-
 ### 2.2 `application.properties` anpassen
 
-Fügen Sie folgende Konfigurationen hinzu:
+Füge folgende Konfigurationen hinzu:
 
 ```properties
 spring.main.banner-mode=off
@@ -133,7 +99,7 @@ spring.ai.mcp.server.protocol=STATELESS
 
 ### 2.3 Tools als MCP exponieren
 
-Um bestehende Tools mit der Annotation `@Tool` als MCP zu exponieren, fügen Sie folgende Zeilen in der Datei `Freelancer4uApplication.java` hinzu:
+Um bestehende Tools mit der Annotation `@Tool` als MCP zu exponieren, füge folgende Zeilen in der Datei `Freelancer4uApplication.java` hinzu:
 
 ```java
 @Bean
@@ -142,47 +108,10 @@ public ToolCallbackProvider registerFreelancerTools(FreelancerTools freelancerTo
 }
 ```
 
-Annotiere die Klasse `FreelancerTools.java` mit `@Service`.
 
-### 2.4 Alternative: Automatisches Exponieren mit `@McpTool`
+### 2.4 Security konfigurieren (API-Key)
 
-Tools können auch automatisch exponiert werden, indem die Annotation `@McpTool` verwendet wird. Beispiel:
-
-```java
-package ch.zhaw.freelancer4u.tools;
-
-import java.time.LocalDateTime;
-
-import org.springaicommunity.mcp.annotation.McpTool;
-import org.springaicommunity.mcp.annotation.McpToolParam;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-
-@Service
-public class WeatherService {
-
-    public record WeatherResponse(Current current) {
-        public record Current(LocalDateTime time, int interval, double temperature_2m) {}
-    }
-
-    @McpTool(description = "Get the temperature (in celsius) for a specific location")
-    public WeatherResponse getTemperature(
-            @McpToolParam(description = "The location latitude") double latitude,
-            @McpToolParam(description = "The location longitude") double longitude) {
-
-        return RestClient.create()
-                .get()
-                .uri("https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m",
-                        latitude, longitude)
-                .retrieve()
-                .body(WeatherResponse.class);
-    }
-}
-```
-
-### 2.5 Security konfigurieren (API-Key)
-
-Passen Sie die Security-Konfiguration an, sodass nur mit einem API-Key auf den MCP Server zugegriffen werden kann.
+Passe die Security-Konfiguration an, sodass nur mit einem API-Key auf den MCP Server zugegriffen werden kann.
 
 Im Header muss Folgendes mitgegeben werden:
 
@@ -192,7 +121,7 @@ X-API-key: freelancer.mycustomapikey
 
 **Hinweis:** Die API-Key-Verwaltung wird nun in-memory geführt. In einem produktiven System würde dies anders gelöst werden.
 
-Ersetzen Sie `SecurityConfig.java` durch folgende Implementierung:
+Ersetze `SecurityConfig.java` durch folgende Implementierung:
 
 ```java
 package ch.zhaw.freelancer4u.security;
@@ -241,46 +170,66 @@ public class SecurityConfig {
 }
 ```
 
+Annotiere die Klasse `FreelancerTools.java` mit `@Service`.
+
+### 2.5 Automatisches Exponieren mit `@McpTool`
+
+Tools können auch automatisch exponiert werden, indem die Annotation `@McpTool` verwendet wird. Bei der Verwendung von dieser Annotation erstellt Spring AI automatisch den entsprechenden Endpoint.
+
+Füge dieses Beispiel in deinem Projekt hinzu:
+
+```java
+package ch.zhaw.freelancer4u.tools;
+
+import java.time.LocalDateTime;
+
+import org.springaicommunity.mcp.annotation.McpTool;
+import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+@Service
+public class WeatherService {
+
+    public record WeatherResponse(Current current) {
+        public record Current(LocalDateTime time, int interval, double temperature_2m) {}
+    }
+
+    @McpTool(description = "Get the temperature (in celsius) for a specific location")
+    public WeatherResponse getTemperature(
+            @McpToolParam(description = "The location latitude") double latitude,
+            @McpToolParam(description = "The location longitude") double longitude) {
+
+        return RestClient.create()
+                .get()
+                .uri("https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m",
+                        latitude, longitude)
+                .retrieve()
+                .body(WeatherResponse.class);
+    }
+}
+```
+
+
 ### 2.6 Server starten und in Jan einbinden
 
-Starten Sie nun den Server und binden Sie ihn in Jan ein. 
+Starte nun das Backend (SpringBoot) und binde es in Jan ein. 
 
 - **Endpoint:** `http://localhost:8080/mcp`
 - **Header:** `X-API-key: freelancer.mycustomapikey`
 
-Führen Sie einen Funktionstest durch.
+**Teste**, ob du via Jan das Wetter abfragen kannst, zum Beispiel Winterthur: 47.5056° N Breitengrad (Latitude) und 8.72413° E Längengrad (Longitude).
+
+Zusätzlich sollte es möglich sein auf die Jobs und Companies deiner Applikation zuzugreifen.
 
 ---
 
 ### 2.7 Deployment anpassen
 
-Weiterleitung:
-- `/api/**` und `/mcp/**` → direkt an das Spring Boot Backend
-- alle anderen Routen → Frontend
+Erstelle die Dateien `docker/nginx/default.conf` und `docker/supervisor/supervisord.conf` mit folgendem Inhalt.
 
-```Dockerfile
-FROM eclipse-temurin:25-jdk-noble
-
-RUN apt-get update && apt-get install -y supervisor curl nginx \
-  && curl -sL https://deb.nodesource.com/setup_22.x | bash - \
-  && apt-get install -y nodejs \
-  && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /usr/src/app
-
-COPY mvnw mvnw
-COPY .mvn .mvn 
-COPY pom.xml pom.xml
-COPY src src
-COPY frontend frontend
-
-RUN cd frontend && npm ci && npm run build
-
-RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
-RUN ./mvnw package -DskipTests
-
-# Configure nginx
-RUN cat > /etc/nginx/sites-available/default <<'EOF'
+**docker/nginx/default.conf**
+```nginx
 server {
     listen 80;
     
@@ -307,20 +256,29 @@ server {
         proxy_cache off;
     }
     
+    location /sse {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection '';
+        proxy_http_version 1.1;
+        chunked_transfer_encoding off;
+        proxy_buffering off;
+        proxy_cache off;
+    }
+    
     # Frontend (everything else)
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
     }
 }
-EOF
+```
 
-# Enable the nginx site configuration
-RUN rm -f /etc/nginx/sites-enabled/default \
-    && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
-
-# Use supervisor to start nginx, frontend and backend
-RUN cat > /etc/supervisor/conf.d/supervisord.conf <<'EOF'
+**docker/supervisor/supervisord.conf**
+```conf
 [supervisord]
 nodaemon=true
 user=root
@@ -335,7 +293,7 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:backend]
-command=java -jar /usr/src/app/target/freelancer4u-0.0.1-SNAPSHOT.jar
+command=java -jar /usr/src/app/app.jar
 directory=/usr/src/app
 autostart=true
 autorestart=true
@@ -353,7 +311,43 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
-EOF
+```
+
+Anschliessend muss die Datei `Dockerfile` wie folgt angepasst werden, damit neu die Requests `/api/**` und `/mcp/**` direkt an das Spring Boot Backend und alle anderen Routen ans Frontend weitergeleitet werden.
+
+```Dockerfile
+FROM eclipse-temurin:25-jdk-noble
+
+RUN apt-get update && apt-get install -y supervisor curl nginx \
+  && curl -sL https://deb.nodesource.com/setup_22.x | bash - \
+  && apt-get install -y nodejs \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+COPY mvnw mvnw
+COPY .mvn .mvn 
+COPY pom.xml pom.xml
+COPY src src
+COPY frontend frontend
+
+RUN cd frontend && npm ci && npm run build
+
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+RUN ./mvnw package -DskipTests
+
+# Copy the built jar to a stable name so Docker does not depend on the exact version
+RUN cp $(ls target/*.jar | head -n 1) app.jar
+
+# Configure nginx
+COPY docker/nginx/default.conf /etc/nginx/sites-available/default
+
+# Enable the nginx site configuration
+RUN rm -f /etc/nginx/sites-enabled/default \
+    && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Use supervisor to start nginx, frontend and backend
+COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 80
 
@@ -369,7 +363,9 @@ CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
 ## ✨ Teil 3: MCP-Server erweitern – Job erstellen
 
-Ziel: Ein MCP-Tool bereitstellen, das einen Job erstellt. Jeder Job wird einer Company zugeordnet.
+Ziel: Ein MCP-Tool bereitstellen, welches einen Job erstellt. Jeder Job wird einer Company zugeordnet.
+
+Dabei muss ein neues Tool bereitgestellt werden. Überprüfe nach der Implementierung, dass du über Jan einen Job erstellen kannst.
 
 Beispielskizze:
 ```java
@@ -380,9 +376,6 @@ public Job createJob(@McpToolParam(description = "Job title") String title,
         @McpToolParam(description = "JobType: TEST, IMPLEMENT, REVIEW, OTHER") JobType jobType,
         @McpToolParam(description = "Job earning") Double earnings,
         @McpToolParam(description = "Company Id of an existing Company") String companyId) {
-
+// your implementation goes here
 }
-// ...existing code...
 ```
-
-Erstelle einen Job über Jan. Wie wird der Job einer Company zugewiesen?
