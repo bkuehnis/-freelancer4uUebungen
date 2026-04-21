@@ -15,6 +15,8 @@ In dieser Übung wird das Framework [Spring AI](https://spring.io/projects/sprin
    - Abfragen von Daten aus der Datenbank  
    - Erstellen von Entitäten mittels Spring AI Tools (Company, Jobs)
 
+
+> ℹ️ Hinweis: In dieser Übung wird Spring AI in Version 2.x verwendet. Siehe dazu die Dokumentation: https://docs.spring.io/spring-ai/reference/2.0/index.html
 ---
 
 ### 📎 Abgabe
