@@ -1,183 +1,148 @@
-# 🧪 Übung 11 – KI-gestützte Titelgenerierung mit Spring AI
+# 3SE2 – Übung 11
 
+**Themen:** Spring AI, KI-generierte Jobtitel, Tool Calling, MCP und ein Chatfenster mit SvelteKit
 
-In dieser Übung wird das Framework [Spring AI](https://spring.io/projects/spring-ai) in das Projekt *Freelancer4u* integriert. Die Aufgabe besteht aus drei Teilen:
+In dieser Übung erweiterst du Freelancer4u um KI-generierte Jobtitel und einen Chat. Zuerst bindest du ein Modell an. Danach ergänzt du zwei Java-Methoden, mit denen der Chat Jobs suchen und erstellen kann. Am Schluss rufst du dieselben Methoden über MCP aus VS Code auf.
 
-1. **Konfiguration von Spring AI**  
-   → Einrichtung und Anbindung eines Chat-Providers (z. B. OpenAI)
+Folgendes wird erwartet.
 
-2. **LLM-gestützte Job-Erstellung**  
-   → Beim Erstellen eines Jobs wird der Titel anhand der Jobbeschreibung durch ein LLM automatisch verbessert.
+- Beim Erstellen eines Jobs über das bestehende Formular wird der Titel anhand der Beschreibung angepasst.
+- Im Frontend können angemeldete Benutzerinnen und Benutzer das Chatfenster öffnen und damit Jobs suchen und erstellen.
+- In VS Code kannst du dieselben Tools über MCP aufrufen. Ein so erstellter Job erscheint anschliessend auch in Freelancer4u.
 
-3. **Chatfenster mit Tool-Unterstützung**  
-   → Ein interaktives Chatfenster wird implementiert  
-   → Es ermöglicht:
-   - Abfragen von Daten aus der Datenbank  
-   - Erstellen von Entitäten mittels Spring AI Tools (Company, Jobs)
+## Ausgangslage
 
+Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 11** und lege in jedem Repository einen neuen Übungsbranch an.
 
-> ℹ️ Hinweis: In dieser Übung wird Spring AI in Version 2.x verwendet. Siehe dazu die Dokumentation: https://docs.spring.io/spring-ai/reference/2.0/index.html
----
+| Repository | Ausgangsstand |
+| --- | --- |
+| [Backend](https://github.com/zhaw-iwi/freelancer4u-hs26) | `1562c30` (nach Übung 10) |
+| [Frontend](https://github.com/zhaw-iwi/freelancer4u-hs26-frontend) | `43f20ad` (nach Übung 9) |
 
-### 📎 Abgabe
+Verwende Java 25 und Node.js ab 22.17. Übernimm wie in den früheren Übungen deine lokalen Einstellungen für MongoDB und Auth0. Im Backend müssen `MONGODB_URI`, `MONGODB_DATABASE` und `AUTH0_DOMAIN` für den Java-Prozess gesetzt sein. Verwende für die Übung eine lokale oder separate Demo-Datenbank. Kopiere im Frontend bei Bedarf `.env.example` nach `.env`, ergänze deine Auth0-Einstellungen und setze `API_BASE_URL=http://127.0.0.1:8080`. Führe im Frontend `npm install` aus. Starte beide Ausgangsprojekte wie in den früheren Übungen und prüfe, ob du dich anmelden und die Jobs-Seite öffnen kannst.
 
-**Folgendes Artefakt ist über Moodle einzureichen:**
+## Teil 1 – Spring AI einrichten
 
-- Die **URL** eines privaten GitHub-Repositories  
-- Das Repository muss für die Dozierenden freigegeben sein  
-- Es enthält die implementierten **Java-Klassen**
+**a)** Ergänze in der Backend-`pom.xml` unter `<properties>` die Version `<spring-ai.version>2.0.2</spring-ai.version>`. Füge direkt vor dem bestehenden `<dependencies>`-Block den folgenden Block ein.
 
-
-## 🛠️ Teil 1. Vorbereitung: Installation und Konfiguration
-
-### 1.1 `pom.xml` anpassen
-
-Auf gleicher Ebene und vor dem `<dependencies>`-Blocks, füge folgendes hinzu: 
 ```xml
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.ai</groupId>
-				<artifactId>spring-ai-bom</artifactId>
-				<version>2.0.0-M4</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-bom</artifactId>
+            <version>${spring-ai.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
 ```
-Füge folgende **Dependencies** innerhalb des `<dependencies>`-Blocks hinzu: 
+
+Füge die folgenden beiden Abhängigkeiten in den bestehenden `<dependencies>`-Block ein. Die BOM legt die Versionen fest.
 
 ```xml
-    <dependency>
-        <groupId>org.springframework.ai</groupId>
-        <artifactId>spring-ai-starter-model-openai</artifactId>
-    </dependency>
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-model-openai</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+</dependency>
 ```
 
 
-### 1.2 OpenAI API Key einrichten
-
-Füge in `src/main/resources/application.properties` folgende Zeilen hinzu:
+**b)** Ergänze in `src/main/resources/application.properties` die folgenden Einstellungen. Behalte die vorhandenen Einträge für MongoDB und Auth0 bei.
 
 ```properties
-spring.ai.openai.api-key=${OPEN_AI_KEY}
-#For debugging (optional):
-logging.level.org.springframework.ai.chat.client.advisor=DEBUG
+spring.ai.model.chat=openai
+spring.ai.openai.api-key=${OPENAI_API_KEY}
+spring.ai.openai.chat.model=${OPENAI_MODEL:gpt-4o-mini}
+spring.ai.mcp.server.enabled=true
+spring.ai.mcp.server.protocol=STREAMABLE
+spring.ai.model.embedding=none
+spring.ai.model.image=none
+spring.ai.model.audio.speech=none
+spring.ai.model.audio.transcription=none
+spring.ai.model.moderation=none
 ```
 
-In der Datei `.vscode/launch.json` fügt bei `env` das Propertie `"OPEN_AI_KEY": "..."` hinzu, wobei ihr den Wert `...` mit dem Open AI Key von Moodle ersetzten müsst.
 
-Sollte wie folgt aussehen:
+**c)** Setze `OPENAI_API_KEY` zusammen mit den vorhandenen Variablen in der Umgebung des Backend-Prozesses. Einen anderen Modellnamen kannst du über `OPENAI_MODEL` setzen. Speichere den Schlüssel nur in deiner lokalen Umgebung.
 
-```json
-"env": {
-                "MONGODB_URI": "...",
-                "AUTH0_DOMAIN": "...",
-                "OPEN_AI_KEY": "..."
-            }
+Setze für diese Übung zusätzlich `SERVER_ADDRESS=127.0.0.1` in derselben Umgebung. So bleibt der MCP-Endpunkt lokal erreichbar. Unter macOS und Linux startest du das Backend wie folgt, nachdem du die übrigen Variablen gesetzt hast.
+
+```sh
+chmod +x mvnw
+SERVER_ADDRESS=127.0.0.1 ./mvnw spring-boot:run
 ```
 
-## ✨ Teil 2: Titelgenerierung mit Spring AI
+Unter Windows setzt du in PowerShell `$env:SERVER_ADDRESS = "127.0.0.1"` und startest mit `.\mvnw.cmd spring-boot:run`. Starte das Backend nach Änderungen an der Konfiguration erneut.
 
-Im Teil 2 wird anhand von [Chat Models](https://docs.spring.io/spring-ai/reference/api/chatmodel.html) den Titel, des Jobs anhand der Beschreibung bei der Erstellung angepasst.
+## Teil 2 – Jobtitel generieren
 
-### 2.1 AI-Model in `JobController` einbinden
-Öffne `src/main/java/ch/zhaw/freelancer4u/controller/JobController.java` und füge das AI-Model per Dependency Injection ein:
+**a)** Lege [JobTitleGenerator.java](JobTitleGenerator.java) im Java-Paket `ch.zhaw.freelancer4u.controller` ab. Die Klasse verwendet den von Spring AI bereitgestellten `ChatClient.Builder`.
+
+**b)** Ergänze in `JobController` das Feld `private final JobTitleGenerator jobTitleGenerator;`. Rufe nach dem Erstellen des `Job`-Objekts und vor dem Speichern Folgendes auf.
 
 ```java
-@Autowired
-OpenAiChatModel chatModel;
+jDAO.setTitle(jobTitleGenerator.generate(jDAO.getTitle(), jDAO.getDescription()));
 ```
 
-### 2.2 Titel automatisch generieren lassen
+**c)** Melde dich mit einem Admin-Konto an und erstelle einen Job über das bestehende Formular. Prüfe den gespeicherten Titel. Bei einem Modellfehler behält der Generator den eingegebenen Titel bei.
 
-Ersetze bei `@PostMapping("/job")` folgenden Code:
+## Teil 3 – Zwei Tools für den Chat bereitstellen
+
+**a)** Lege [FreelancerTools.java](FreelancerTools.java) und [FreelancerToolConfig.java](FreelancerToolConfig.java) im Paket `ch.zhaw.freelancer4u.tools` ab. `@Tool` beschreibt die Methoden für Spring AI. Der `ToolCallbackProvider` registriert beide Methoden.
+
+**b)** Ergänze im `CompanyRepository` die Methode `Optional<Company> findFirstByNameIgnoreCase(String name);` und importiere `java.util.Optional`. Ergänze im `JobRepository` die folgende Methode und importiere `ch.zhaw.freelancer4u.model.JobState`.
 
 ```java
-Job job = new Job(cDTO.getTitle(), cDTO.getDescription(), cDTO.getJobType(), cDTO.getEarnings(), cDTO.getCompanyId());
+List<Job> findByJobStateAndTitleContainingIgnoreCaseOrJobStateAndDescriptionContainingIgnoreCase(
+        JobState titleState, String title, JobState descriptionState, String description, Pageable pageable);
 ```
 
-mit diesem:
-```java
-var generatedTitle = chatModel.call(new Prompt(
-    "Der Titel lautet bisher: '" + cDTO.getTitle() + "'. Falls nötig, verbessere den Titel anhand der folgenden Beschreibung: " + cDTO.getDescription() + ". Gib nur den neuen Titel zurück."
-));
-var title = generatedTitle.getResult().getOutput().getText();
-Job job = new Job(title, cDTO.getDescription(), cDTO.getJobType(), cDTO.getEarnings(), cDTO.getCompanyId());
+**c)** Lege [ChatController.java](ChatController.java) im Paket `ch.zhaw.freelancer4u.controller` ab. Der Controller stellt `POST /api/chat` bereit und übergibt die Tools an den `ChatClient`. Das Modell kann einen Tool-Aufruf anfordern. Spring AI führt die Java-Methode aus und gibt das Ergebnis an das Modell zurück.
+
+## Teil 4 – Chatfenster im Frontend einbauen
+
+| Vorlage | Ziel im Frontend-Repository |
+| --- | --- |
+| [JobChat.svelte](JobChat.svelte) | `src/lib/JobChat.svelte` |
+| [+server.js](+server.js) | `src/routes/api/chat/+server.js` |
+
+Importiere in `src/routes/+layout.svelte` die Komponente mit `import JobChat from "#lib/JobChat.svelte";`. Ergänze unter dem Seiteninhalt:
+
+```svelte
+{#if isAuthenticated}
+  <JobChat />
+{/if}
 ```
 
-### 2.3 Unit Test anpassen
+Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne den Chat unten rechts. Frage zum Beispiel «Welche offenen Java-Jobs gibt es?». Der SvelteKit-Endpunkt reicht das vorhandene Zugriffstoken an das Spring-Backend weiter. Das Modell fordert bei Bedarf einen Aufruf von `search_jobs` an.
 
-Öffne `src/test/java/ch/zhaw/freelancer4u/controller/JobControllerTest.java`.
+## Teil 5 – Dieselben Tools in VS Code verwenden
 
-Füge folgendes Mock-Objekt hinzu:
-
-```java
-@MockitoBean(answers = Answers.RETURNS_DEEP_STUBS)
-private OpenAiChatModel chatModel;
-```
-Ergänze ausserdem folgende Setup-Methode:
+Der WebMVC-Starter veröffentlicht die registrierten Tool-Callbacks am MCP-Endpunkt. Ergänze im Backend in `SecurityConfig` die folgende Filterkette und importiere `org.springframework.core.annotation.Order`. Der Endpunkt dient der lokalen Übung und kann Jobs schreiben. Starte das Backend dafür mit `SERVER_ADDRESS=127.0.0.1` wie in Teil 1.
 
 ```java
-@BeforeEach
-void setupMockAiResponse() {
-    when(chatModel.call(any(Prompt.class))
-        .getResult()
-        .getOutput()
-        .getText()).thenReturn(TEST_TITLE);
+@Bean
+@Order(1)
+public SecurityFilterChain localMcpFilterChain(HttpSecurity http) throws Exception {
+    return http.securityMatcher("/mcp")
+            .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+            .csrf(csrf -> csrf.disable())
+            .build();
 }
 ```
 
-### 2.4 Testen
-Erstelle einen neuen Job. Überprüffe, ob der Titel nach der Erstellung angepasst wurde.
+Kopiere [mcp.json](mcp.json) nach `.vscode/mcp.json` im Backend-Workspace. Starte den Server-Eintrag in VS Code und prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Rufe `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
 
-## ✨ Teil 3: Chatbot
-Ziel dieses Teil ist es einen Chatbot zu erstellen, mit welchem die einen geigneten Job finden kann. Zusätzlich soll es möglich sein über den Chatbot einen Job und die ensprechende Company zu erstellen.
+Die beiden Tools definieren, **was** Freelancer4u ausführen kann. MCP definiert, **wie** VS Code diese Tools entdeckt und aufruft.
 
-Für die Umsetzung wird die [Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html) verwendet. 
-### 3.1 CompanyService updaten
+## Abgabe
 
-`src/main/java/ch/zhaw/freelancer4u/service/CompanyService.java`
+Pushe deine Änderungen in deine privaten GitHub-Repositories für Frontend und Backend. Gib beide Repositories für die Dozierenden frei und reiche die beiden URLs auf Moodle ein. Zugangsdaten bleiben in deiner lokalen Umgebung.
 
-```java
-    public List<Company> getAllCompanies() {
-        return companyRepository.findAll();
-    }
-
-    public void createCompany(String name, String email) {
-        Company company = new Company(name, email);
-        companyRepository.save(company);
-    }
-```
-
-### 3.2 Neue Dateien erstellen
-
-Kopiere die folgenden Dateien in die entsprechenden Ordner:
-
-| Datei | Pfad | Beschreibung |
-|-------|------|--------------|
-| `OpenAiConfig.java` | `src/main/java/ch/zhaw/freelancer4u/config/` | Diese Klasse enthält die Konfiguration für das OpenAI-Modell. Hier wird z. B. das `OpenAiChatModel` als Bean definiert, sodass es in anderen Klassen per `@Autowired` genutzt werden kann. |
-| `FreelancerTools.java` | `src/main/java/ch/zhaw/freelancer4u/tools/` | Eine Hilfsklasse (Utility), die Tools (Methoden) für den Chat bereitstellt. Der Chatbot hat Zugriff auf diese Methoden und kann sie während des Chattens aufrufen. |
-| `ChatController.java` | `src/main/java/ch/zhaw/freelancer4u/controller/` | Ein REST-Controller für Chat-Funktionalitäten. Er stellt Endpunkte bereit, über die im Frontend eine Konversation mit dem OpenAI-Modell geführt werden kann. |
-| `CreateRandomJobsController.java` | `src/main/java/ch/zhaw/freelancer4u/controller/` | Ein REST-Controller, der zufällige Jobs generieren und speichern kann – nützlich für Tests, Demos oder initiale Datenbefüllung. |
-| `CreateRandomJobsControllerTest.java` | `src/test/java/ch/zhaw/freelancer4u/controller/` | Ein JUnit-Test für den `CreateRandomJobsController`. Stellt sicher, dass das Generieren und Speichern von zufälligen Jobs korrekt funktioniert. |
-| `+page.svelte` | `frontend/src/routes/chat/` | Die Svelte-Komponente für die Chat-Seite. Hier wird die Benutzeroberfläche für den KI-Chat dargestellt, z. B. ein Eingabefeld für Nachrichten und ein Anzeigebereich für Antworten. |
-| `+page.server.js` | `frontend/src/routes/chat/` | Die Svelte-Komponente für die serverseitige Chat-Seite. Hier wird das Spring Boot Backend aufgerufen. |
-
-
-
-### 3.3 Menüeintrag im Frontend hinzufügen
-
-Öffne `frontend/src/routes/+layout.svelte` und füge einen Menüpunkt zum Chat ein, z. B.:
-
-```html
-<a class="nav-link" href="/chat">💬 Chat</a>
-```
-
-### 3.4 Erweiterung von `FreelancerTools.java`
-Bisher kann der Chatbot nur Informationen über Jobs und Unternehmen aus der Datenbank lesen. Ziel ist es, die Klasse `FreelancerTools.java` so anzupassen, dass auch Jobs erstellt werden können. Dabei ist zu beachten, dass ein Unternehmen ebenfalls erstellt werden muss, falls es noch nicht existiert.
-
-Bei der Erstellung eines Jobs soll es möglich sein, den Namen des Unternehmens anzugeben. Es werden also zwei Methoden benötigt: eine zum Erstellen eines Unternehmens und eine zum Erstellen eines Jobs.
-
-Für die Erstellung eines Jobs wird die `companyId` benötigt, die anhand des Unternehmensnamens in der Datenbank ermittelt werden kann.
+[Spring AI OpenAI Chat](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html) · [Spring AI MCP über WebMVC](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-overview.html#_webmvc)
