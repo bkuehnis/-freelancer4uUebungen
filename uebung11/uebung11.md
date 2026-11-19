@@ -12,14 +12,15 @@ Folgendes wird erwartet.
 
 ## Ausgangslage
 
-Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 11** und lege in jedem Repository einen neuen Übungsbranch an.
+Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 11**. Vergesse dabei nicht die `.env` Datein im Front und Backend anzupassen
 
-| Repository | Ausgangsstand |
-| --- | --- |
-| [Backend](https://github.com/zhaw-iwi/freelancer4u-hs26) | `1562c30` (nach Übung 10) |
-| [Frontend](https://github.com/zhaw-iwi/freelancer4u-hs26-frontend) | `43f20ad` (nach Übung 9) |
-
-Verwende Java 25 und Node.js ab 22.17. Übernimm wie in den früheren Übungen deine lokalen Einstellungen für MongoDB und Auth0. Im Backend müssen `MONGODB_URI`, `MONGODB_DATABASE` und `AUTH0_DOMAIN` für den Java-Prozess gesetzt sein. Verwende für die Übung eine lokale oder separate Demo-Datenbank. Kopiere im Frontend bei Bedarf `.env.example` nach `.env`, ergänze deine Auth0-Einstellungen und setze `API_BASE_URL=http://127.0.0.1:8080`. Führe im Frontend `npm install` aus. Starte beide Ausgangsprojekte wie in den früheren Übungen und prüfe, ob du dich anmelden und die Jobs-Seite öffnen kannst.
+## Die Übung darf alternativ im Einzelprojekt umgesetzt werden.
+Folgendes wird erwartet.
+- Im Backend muss ein sinnvoller Use Case umgesetzt werden, welcher die API von OpenAI aufruft.
+- Im Frontend muss ein Chat erstellt werden, wobei der Chat auf Tools im backend zugreifen kann.
+- Die Tools müssen über MCP an MCP Clients (zB. Visual Studio Code Copilot) zur verfügung gestellt werden.
+- Ein MCP Client muss mit dem Endpoint eingerechetet werden.
+- Der MCP Endpoint muss via Auth0 gesichert sein.
 
 ## Teil 1 – Spring AI einrichten
 
@@ -66,19 +67,13 @@ spring.ai.model.image=none
 spring.ai.model.audio.speech=none
 spring.ai.model.audio.transcription=none
 spring.ai.model.moderation=none
+spring.ai.openai.base-url=TODO
 ```
 
 
-**c)** Setze `OPENAI_API_KEY` zusammen mit den vorhandenen Variablen in der Umgebung des Backend-Prozesses. Einen anderen Modellnamen kannst du über `OPENAI_MODEL` setzen. Speichere den Schlüssel nur in deiner lokalen Umgebung.
+**c)** Füge die Variable `OPENAI_API_KEY` in die `.env` Datei und setze dort dein API Key, welchen du auf Moodle findest. Einen anderen Modellnamen kannst du über `OPENAI_MODEL` setzen. 
 
-Setze für diese Übung zusätzlich `SERVER_ADDRESS=127.0.0.1` in derselben Umgebung. So bleibt der MCP-Endpunkt lokal erreichbar. Unter macOS und Linux startest du das Backend wie folgt, nachdem du die übrigen Variablen gesetzt hast.
 
-```sh
-chmod +x mvnw
-SERVER_ADDRESS=127.0.0.1 ./mvnw spring-boot:run
-```
-
-Unter Windows setzt du in PowerShell `$env:SERVER_ADDRESS = "127.0.0.1"` und startest mit `.\mvnw.cmd spring-boot:run`. Starte das Backend nach Änderungen an der Konfiguration erneut.
 
 ## Teil 2 – Jobtitel generieren
 
@@ -124,20 +119,114 @@ Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne de
 
 ## Teil 5 – Dieselben Tools in VS Code verwenden
 
-Der WebMVC-Starter veröffentlicht die registrierten Tool-Callbacks am MCP-Endpunkt. Ergänze im Backend in `SecurityConfig` die folgende Filterkette und importiere `org.springframework.core.annotation.Order`. Der Endpunkt dient der lokalen Übung und kann Jobs schreiben. Starte das Backend dafür mit `SERVER_ADDRESS=127.0.0.1` wie in Teil 1.
+Der WebMVC-Starter veröffentlicht die registrierten Tool-Callbacks am MCP-Endpunkt. Ergänze im Backend in `SecurityConfig` die folgende Filterkette und füge die im Beispiel gezeigten Imports hinzu. Der Endpunkt dient der lokalen Übung und kann Jobs schreiben.
+
+```java
+import java.net.URI;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+```
 
 ```java
 @Bean
 @Order(1)
-public SecurityFilterChain localMcpFilterChain(HttpSecurity http) throws Exception {
-    return http.securityMatcher("/mcp")
-            .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+public SecurityFilterChain mcpFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
+        @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer,
+        @Value("${freelancer.mcp.resource-url}") URI resource) throws Exception {
+    String metadataPath = "/.well-known/oauth-protected-resource/mcp";
+    var entryPoint = new BearerTokenAuthenticationEntryPoint();
+    entryPoint.setResourceMetadataParameterResolver(request -> resource.resolve(metadataPath).toString());
+
+    return http.securityMatcher("/mcp", metadataPath)
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers(metadataPath).permitAll()
+                    .anyRequest().hasAuthority("SCOPE_mcp:tools"))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .csrf(csrf -> csrf.disable())
+            .oauth2ResourceServer(oauth2 -> oauth2
+                    .authenticationEntryPoint(entryPoint)
+                    .protectedResourceMetadata(metadata -> metadata.protectedResourceMetadataCustomizer(builder ->
+                            builder.resource(resource.toString()).authorizationServer(issuer).scope("mcp:tools")))
+                    .jwt(jwt -> jwt.decoder(token -> {
+                        var decoded = jwtDecoder.decode(token);
+                        var audiences = decoded.getAudience();
+                        if (audiences == null || !audiences.contains(resource.toString())) {
+                            throw new BadJwtException("The token audience does not match this MCP server.");
+                        }
+                        return decoded;
+                    })))
             .build();
 }
 ```
 
-Kopiere [mcp.json](mcp.json) nach `.vscode/mcp.json` im Backend-Workspace. Starte den Server-Eintrag in VS Code und prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Rufe `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
+### Auth0 für den MCP-Endpunkt einrichten
+
+Verwende denselben Auth0-Tenant wie für Freelancer4u. In diesem Teil registrierst du den MCP-Endpunkt als API und verwendest eine Auth0-Anwendung für die Anmeldung aus VS Code. Die folgenden Bilder stammen aus Auth0-Beispielen. Verwende beim Einrichten die Werte aus der Übung.
+
+**a)** Öffne im Auth0-Dashboard in der linken Navigation **Settings → Advanced**. Aktiviere **Resource Parameter Compatibility Profile** und speichere. VS Code sendet die MCP-Adresse als `resource`. Mit dieser Einstellung verwendet Auth0 die Adresse als Audience des Zugriffstokens. Für diese Übung wird der Client über seine vorhandene Client ID angegeben.
+
+![Auth0 Tenant Settings mit dem Schalter Resource Parameter Compatibility Profile](https://images.ctfassets.net/23aumh6u8s0i/70c3gxsal989JBEBCSPmIa/17059006b59dd211d78cec9b381c2f36/dcr-resource-param-auth0-dashboard.png)
+
+[Bildquelle und Erklärung von Auth0](https://auth0.com/blog/secure-csharp-mcp-server-with-auth0/#configure-your-auth0-tenant)
+
+**b)** Wähle **Applications → APIs → Create API**. Gib als Name zum Beispiel `Freelancer4u MCP` an und verwende als **Identifier** exakt `http://127.0.0.1:8080/mcp`. Belasse den Signaturalgorithmus bei **RS256**.
+
+![Dialog zum Anlegen einer API im Auth0-Dashboard](https://images.ctfassets.net/23aumh6u8s0i/3DkQfFDUzWNHutrnhYfssz/7dbef3342ad20c4686bed946f4b90570/CreateCustomAPI.png)
+
+Öffne bei der neuen API **Permissions** und füge unter `Add a Permission` `mcp:tools` hinzu. 
+![Permissions-Tab einer API im Auth0-Dashboard](img/api_persmissions.png)
+
+Bei der neuen API aktiviere unter **Settings → RBAC Settings** die Option **Enable RBAC** und **Add Permissions in the Access Token** und speichere. Spring prüft den Scope im Zugriffstoken.
+![Settings-Tab RBAC](img/api_settings_rbac.png)
+
+**c)** Öffne **User Management → Roles → admin → Permissions → Add Permissions**. Wähle die neue MCP-API und `mcp:tools` aus. Prüfe unter **User Management → Users → dein Testkonto → Roles**, ob dem Konto bereits `admin` zugewiesen ist. Mit dieser Konfiguration können sich Benutzerinnen und Benutzer mit dieser Rolle mit dem MCP-Server verbinden.
+
+![Dialog zum Hinzufügen einer API-Berechtigung zu einer bestehenden Auth0-Rolle](img/roles_permissions.png)
+
+**d)** Öffne unter **Applications → [Deine Applikation]**. Wähle den Tab **URLs** und unter **Allowed Callback URLs** füge `http://127.0.0.1:33418/` und `https://vscode.dev/redirect` hinzu.
+
+In der gleichen Application im Tab **API Access**, drücke auf edit bei deiner MCP API.
+![API Access edit](img/API_access_edit.png)
+
+Wähle `all` und `Grant Access`.
+![API Access, grant](img/API_access_grant.png)
+
+
+**e)** Ergänze den MCP-Resource-Identifier in `src/main/resources/application.properties`. `AUTH0_DOMAIN` bleibt die Domain des Tenants aus dem bisherigen Backend-Setup.
+
+```properties
+freelancer.mcp.resource-url=${MCP_RESOURCE_URL:http://127.0.0.1:8080/mcp}
+```
+
+Vergleiche vor dem Test drei Werte: den **Identifier** der Auth0-API, die **Resource-URL** im Backend und die **URL** im VS-Code-Eintrag. Für den lokalen Test müssen alle drei genau `http://127.0.0.1:8080/mcp` sein.
+
+### MCP-Server in VS Code hinzufügen und testen
+
+<video controls src="img/setup_mcp.mov" title="Title"></video>
+**a)** Starte das Spring-Boot-Backend und öffne den Backend-Ordner in VS Code. Kopiere die Vorlage [mcp.json](mcp.json) als `.mcp.json` in den Wurzelordner des Backends, auf dieselbe Ebene wie `pom.xml`. Falls dort bereits eine `.mcp.json` liegt, ergänze darin den Eintrag `freelancer4u` unter `mcpServers`.
+
+```json
+{
+  "mcpServers": {
+    "freelancer4u": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp",
+      "oauthClientId": "DEINE_AUTH0_CLIENT_ID"
+    }
+  }
+}
+```
+
+Ersetze `DEINE_AUTH0_CLIENT_ID` durch die **Client ID** aus Schritt d) der Auth0-Anleitung. Die `url` ist die Adresse des laufenden MCP-Endpunkts. VS Code verbindet sich per HTTP mit dem Backend. [VS Code MCP-Konfiguration](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)
+
+**b)** Öffne einen **Copilot-Chat** in diesem Workspace und sende zuerst eine Nachricht, damit die Sitzung startet. Öffne dann über die Befehlspalette **Chat: Open Customizations** und wähle unter **MCP Servers** den Eintrag `freelancer4u`. Starte den Eintrag. Falls **Authenticate** angezeigt wird, wähle diese Aktion. Melde dich im Browser mit deinem Admin-Testkonto an und bestätige den Zugriff. [MCP-Server in VS Code verwalten](https://code.visualstudio.com/docs/agents/run/manage-mcp-servers)
+
+
+**c)** Prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Frage zuerst «Suche mit dem Freelancer4u-Tool nach offenen Java-Jobs». Rufe danach `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
 
 Die beiden Tools definieren, **was** Freelancer4u ausführen kann. MCP definiert, **wie** VS Code diese Tools entdeckt und aufruft.
 
