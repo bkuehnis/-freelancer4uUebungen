@@ -1,4 +1,4 @@
-# 3SE2 – Übung 11
+# 3SE2 - Übung 11
 
 **Themen:** Spring AI, KI-generierte Jobtitel, Tool Calling, MCP und ein Chatfenster mit SvelteKit
 
@@ -12,7 +12,7 @@ Folgendes wird erwartet.
 
 ## Ausgangslage
 
-Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 11**. Vergesse dabei nicht die `.env` Datein im Front und Backend anzupassen
+Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 11**. Vergesse dabei nicht die `.env` Datein im Front und Backend anzupassen.
 
 ## Die Übung darf alternativ im Einzelprojekt umgesetzt werden.
 Folgendes wird erwartet.
@@ -22,7 +22,11 @@ Folgendes wird erwartet.
 - Ein MCP Client muss mit dem Endpoint eingerechetet werden.
 - Der MCP Endpoint muss via Auth0 gesichert sein.
 
-## Teil 1 – Spring AI einrichten
+## OpenAI API Gateway
+
+Wir verwenden ein OpenAI-API-Gateway, über das API-Schlüssel bereitgestellt werden. Euren persönlichen Schlüssel findet ihr auf Moodle. Für die Nutzung gilt ein Token-Limit pro Stunde. Wenn ihr stattdessen euren eigenen OpenAI-API-Schlüssel verwenden möchtet, kommentiert in der Datei `application.properties` die Zeile `spring.ai.openai.base-url` aus und tragt euren Schlüssel in der `.env`-Datei in der Variable `OPENAI_API_KEY` ein.
+
+## Teil 1 - Spring AI einrichten
 
 **a)** Ergänze in der Backend-`pom.xml` unter `<properties>` die Version `<spring-ai.version>2.0.2</spring-ai.version>`. Füge direkt vor dem bestehenden `<dependencies>`-Block den folgenden Block ein.
 
@@ -59,7 +63,7 @@ Füge die folgenden beiden Abhängigkeiten in den bestehenden `<dependencies>`-B
 ```properties
 spring.ai.model.chat=openai
 spring.ai.openai.api-key=${OPENAI_API_KEY}
-spring.ai.openai.chat.model=${OPENAI_MODEL:gpt-4o-mini}
+spring.ai.openai.chat.model=${OPENAI_MODEL:gpt-5-nano}
 spring.ai.mcp.server.enabled=true
 spring.ai.mcp.server.protocol=STREAMABLE
 spring.ai.model.embedding=none
@@ -67,7 +71,7 @@ spring.ai.model.image=none
 spring.ai.model.audio.speech=none
 spring.ai.model.audio.transcription=none
 spring.ai.model.moderation=none
-spring.ai.openai.base-url=TODO
+spring.ai.openai.base-url=https://llm-gateway.91.98.233.101.sslip.io/v1
 ```
 
 
@@ -75,7 +79,7 @@ spring.ai.openai.base-url=TODO
 
 
 
-## Teil 2 – Jobtitel generieren
+## Teil 2 - Jobtitel generieren
 
 **a)** Lege [JobTitleGenerator.java](JobTitleGenerator.java) im Java-Paket `ch.zhaw.freelancer4u.controller` ab. Die Klasse verwendet den von Spring AI bereitgestellten `ChatClient.Builder`.
 
@@ -87,7 +91,7 @@ jDAO.setTitle(jobTitleGenerator.generate(jDAO.getTitle(), jDAO.getDescription())
 
 **c)** Melde dich mit einem Admin-Konto an und erstelle einen Job über das bestehende Formular. Prüfe den gespeicherten Titel. Bei einem Modellfehler behält der Generator den eingegebenen Titel bei.
 
-## Teil 3 – Zwei Tools für den Chat bereitstellen
+## Teil 3 - Zwei Tools für den Chat bereitstellen
 
 **a)** Lege [FreelancerTools.java](FreelancerTools.java) und [FreelancerToolConfig.java](FreelancerToolConfig.java) im Paket `ch.zhaw.freelancer4u.tools` ab. `@Tool` beschreibt die Methoden für Spring AI. Der `ToolCallbackProvider` registriert beide Methoden.
 
@@ -100,7 +104,7 @@ List<Job> findByJobStateAndTitleContainingIgnoreCaseOrJobStateAndDescriptionCont
 
 **c)** Lege [ChatController.java](ChatController.java) im Paket `ch.zhaw.freelancer4u.controller` ab. Der Controller stellt `POST /api/chat` bereit und übergibt die Tools an den `ChatClient`. Das Modell kann einen Tool-Aufruf anfordern. Spring AI führt die Java-Methode aus und gibt das Ergebnis an das Modell zurück.
 
-## Teil 4 – Chatfenster im Frontend einbauen
+## Teil 4 - Chatfenster im Frontend einbauen
 
 | Vorlage | Ziel im Frontend-Repository |
 | --- | --- |
@@ -115,9 +119,9 @@ Importiere in `src/routes/+layout.svelte` die Komponente mit `import JobChat fro
 {/if}
 ```
 
-Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne den Chat unten rechts. Frage zum Beispiel «Welche offenen Java-Jobs gibt es?». Der SvelteKit-Endpunkt reicht das vorhandene Zugriffstoken an das Spring-Backend weiter. Das Modell fordert bei Bedarf einen Aufruf von `search_jobs` an.
+Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne den Chat unten rechts. Frage zum Beispiel «Welche offenen Java-Jobs gibt es?». Der SvelteKit-Endpunkt reicht das vorhandene Zugriffstoken an das Spring-Backend weiter. Das Modell fordert bei Bedarf einen Aufruf von `search_jobs` an. Du kannst auch über den Chat einen Job erstellen. Dazu ruft das Modell bei Bedarf das Tool `create_job` auf.
 
-## Teil 5 – Dieselben Tools in VS Code verwenden
+## Teil 5 – Die Tools `search_jobs` und `create_job` im Backend als MCP-Server bereitstellen
 
 Der WebMVC-Starter veröffentlicht die registrierten Tool-Callbacks am MCP-Endpunkt. Ergänze im Backend in `SecurityConfig` die folgende Filterkette und füge die im Beispiel gezeigten Imports hinzu. Der Endpunkt dient der lokalen Übung und kann Jobs schreiben.
 
@@ -165,7 +169,9 @@ public SecurityFilterChain mcpFilterChain(HttpSecurity http, JwtDecoder jwtDecod
 
 ### Auth0 für den MCP-Endpunkt einrichten
 
-Verwende denselben Auth0-Tenant wie für Freelancer4u. In diesem Teil registrierst du den MCP-Endpunkt als API und verwendest eine Auth0-Anwendung für die Anmeldung aus VS Code. Die folgenden Bilder stammen aus Auth0-Beispielen. Verwende beim Einrichten die Werte aus der Übung.
+Verwende denselben Auth0-Tenant wie für Freelancer4u. In diesem Teil registrierst du den MCP-Endpunkt als API und verwendest eine Auth0-Anwendung für die Anmeldung aus VS Code. Teils der folgenden Bilder stammen aus Auth0-Beispielen. Verwende beim Einrichten die Werte aus der Übung.
+
+**Hinweis:** Für das Deployment musst du die Schritte b) bis d) mit deinem bereitgestellten Endpunkt wiederholen. Ersetze ausserdem in der `.env`-Datei den Wert der Variable `MCP_RESOURCE_URL` durch die URL deines bereitgestellten MCP-Endpunkts.
 
 **a)** Öffne im Auth0-Dashboard in der linken Navigation **Settings → Advanced**. Aktiviere **Resource Parameter Compatibility Profile** und speichere. VS Code sendet die MCP-Adresse als `resource`. Mit dieser Einstellung verwendet Auth0 die Adresse als Audience des Zugriffstokens. Für diese Übung wird der Client über seine vorhandene Client ID angegeben.
 
@@ -206,27 +212,12 @@ Vergleiche vor dem Test drei Werte: den **Identifier** der Auth0-API, die **Reso
 
 ### MCP-Server in VS Code hinzufügen und testen
 
+**Hinweis:** Falls beim Einrichten nach der **Client ID** nachgefragt wird, verwende die aus Schritt d) der Auth0-Anleitung.
+
 <video controls src="img/setup_mcp.mov" title="Title"></video>
-**a)** Starte das Spring-Boot-Backend und öffne den Backend-Ordner in VS Code. Kopiere die Vorlage [mcp.json](mcp.json) als `.mcp.json` in den Wurzelordner des Backends, auf dieselbe Ebene wie `pom.xml`. Falls dort bereits eine `.mcp.json` liegt, ergänze darin den Eintrag `freelancer4u` unter `mcpServers`.
-
-```json
-{
-  "mcpServers": {
-    "freelancer4u": {
-      "type": "http",
-      "url": "http://127.0.0.1:8080/mcp",
-      "oauthClientId": "DEINE_AUTH0_CLIENT_ID"
-    }
-  }
-}
-```
-
-Ersetze `DEINE_AUTH0_CLIENT_ID` durch die **Client ID** aus Schritt d) der Auth0-Anleitung. Die `url` ist die Adresse des laufenden MCP-Endpunkts. VS Code verbindet sich per HTTP mit dem Backend. [VS Code MCP-Konfiguration](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)
-
-**b)** Öffne einen **Copilot-Chat** in diesem Workspace und sende zuerst eine Nachricht, damit die Sitzung startet. Öffne dann über die Befehlspalette **Chat: Open Customizations** und wähle unter **MCP Servers** den Eintrag `freelancer4u`. Starte den Eintrag. Falls **Authenticate** angezeigt wird, wähle diese Aktion. Melde dich im Browser mit deinem Admin-Testkonto an und bestätige den Zugriff. [MCP-Server in VS Code verwalten](https://code.visualstudio.com/docs/agents/run/manage-mcp-servers)
 
 
-**c)** Prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Frage zuerst «Suche mit dem Freelancer4u-Tool nach offenen Java-Jobs». Rufe danach `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
+**a)** Prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Frage zuerst «Suche mit dem Freelancer4u-Tool nach offenen Java-Jobs». Rufe danach `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
 
 Die beiden Tools definieren, **was** Freelancer4u ausführen kann. MCP definiert, **wie** VS Code diese Tools entdeckt und aufruft.
 
