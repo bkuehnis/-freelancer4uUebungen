@@ -5,14 +5,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class JobTitleGenerator {
     private static final Logger log = LoggerFactory.getLogger(JobTitleGenerator.class);
     private final ChatClient chatClient;
-
-    public JobTitleGenerator(ChatClient.Builder builder) {
-        this.chatClient = builder.build();
-    }
 
     public String generate(String title, String description) {
         try {

@@ -2,10 +2,11 @@
 
 **Themen:** Spring AI, KI-generierte Jobtitel, Tool Calling, MCP und ein Chatfenster mit SvelteKit
 
-In dieser Übung erweiterst du Freelancer4u um KI-generierte Jobtitel und einen Chat. Zuerst bindest du ein Modell an. Danach ergänzt du zwei Java-Methoden, mit denen der Chat Jobs suchen und erstellen kann. Am Schluss rufst du dieselben Methoden über MCP aus VS Code auf.
+In dieser Übung erweiterst du Freelancer4u um KI-generierte Jobtitel und einen Chat. Zuerst bindest du ein Modell an und erzeugst damit auch einen Demo-Job als JSON. Danach ergänzt du zwei Java-Methoden, mit denen der Chat Jobs suchen und erstellen kann. Am Schluss rufst du dieselben Methoden über MCP aus VS Code auf.
 
 Folgendes wird erwartet.
 
+- Der Endpunkt `GET /api/job/randomjob` liefert einen KI-generierten Demo-Job als JSON.
 - Beim Erstellen eines Jobs über das bestehende Formular wird der Titel anhand der Beschreibung angepasst.
 - Im Frontend können angemeldete Benutzerinnen und Benutzer das Chatfenster öffnen und damit Jobs suchen und erstellen.
 - In VS Code kannst du dieselben Tools über MCP aufrufen. Ein so erstellter Job erscheint anschliessend auch in Freelancer4u.
@@ -72,6 +73,7 @@ spring.ai.model.audio.speech=none
 spring.ai.model.audio.transcription=none
 spring.ai.model.moderation=none
 spring.ai.openai.base-url=https://llm-gateway.91.98.233.101.sslip.io/v1
+logging.level.org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor=DEBUG
 ```
 
 
@@ -79,9 +81,11 @@ spring.ai.openai.base-url=https://llm-gateway.91.98.233.101.sslip.io/v1
 
 
 
-## Teil 2 - Jobtitel generieren
+**d)** Lege [ChatClientConfig.java](ChatClientConfig.java) im Paket `ch.zhaw.freelancer4u.config` ab. Spring AI stellt einen `ChatClient.Builder` bereit. Die Konfiguration baut daraus eine `ChatClient`-Bean mit `SimpleLoggerAdvisor`. Klassen mit `@RequiredArgsConstructor` können die Bean über ein `final`-Feld injizieren lassen.
 
-**a)** Lege [JobTitleGenerator.java](JobTitleGenerator.java) im Java-Paket `ch.zhaw.freelancer4u.controller` ab. Die Klasse verwendet den von Spring AI bereitgestellten `ChatClient.Builder`.
+## Teil 2 - Jobtitel und Demo-Jobs generieren
+
+**a)** Lege [JobTitleGenerator.java](JobTitleGenerator.java) im Java-Paket `ch.zhaw.freelancer4u.controller` ab. Die Klasse erhält den `ChatClient` aus `ChatClientConfig` über den von Lombok erzeugten Konstruktor. `.system(...)` gibt die Anweisung für das Modell vor, `.user(...)` übergibt Titel und Beschreibung und `.content()` liefert den Antworttext.
 
 **b)** Ergänze in `JobController` das Feld `private final JobTitleGenerator jobTitleGenerator;`. Rufe nach dem Erstellen des `Job`-Objekts und vor dem Speichern Folgendes auf.
 
@@ -90,6 +94,20 @@ jDAO.setTitle(jobTitleGenerator.generate(jDAO.getTitle(), jDAO.getDescription())
 ```
 
 **c)** Melde dich mit einem Admin-Konto an und erstelle einen Job über das bestehende Formular. Prüfe den gespeicherten Titel. Bei einem Modellfehler behält der Generator den eingegebenen Titel bei.
+
+**d)** Ergänze in `JobController` den Import `org.springframework.ai.chat.client.ChatClient` und das Feld `private final ChatClient chatClient;`. Der vorhandene `@RequiredArgsConstructor` übernimmt die Injektion. Füge diese Methode hinzu.
+
+```java
+@GetMapping("/randomjob")
+public ResponseEntity<Job> randomJob() {
+    Job randomJob = chatClient.prompt("Create a random job")
+            .call()
+            .entity(Job.class);
+    return ResponseEntity.status(HttpStatus.OK).body(randomJob);
+}
+```
+
+`.entity(Job.class)` wandelt die Modellantwort in ein Java-Objekt um. Teste `GET http://localhost:8080/api/job/randomjob` mit dem Bearer-Token.
 
 ## Teil 3 - Zwei Tools für den Chat bereitstellen
 
@@ -102,7 +120,7 @@ List<Job> findByJobStateAndTitleContainingIgnoreCaseOrJobStateAndDescriptionCont
         JobState titleState, String title, JobState descriptionState, String description, Pageable pageable);
 ```
 
-**c)** Lege [ChatController.java](ChatController.java) im Paket `ch.zhaw.freelancer4u.controller` ab. Der Controller stellt `POST /api/chat` bereit und übergibt die Tools an den `ChatClient`. Das Modell kann einen Tool-Aufruf anfordern. Spring AI führt die Java-Methode aus und gibt das Ergebnis an das Modell zurück.
+**c)** Lege [ChatController.java](ChatController.java) im Paket `ch.zhaw.freelancer4u.controller` ab. Der Controller stellt `POST /api/chat` bereit. Er baut einen eigenen ChatClient mit Systemprompt, Freelancer-Tools, `MessageChatMemoryAdvisor` und `SimpleLoggerAdvisor`. Der Memory-Advisor verwaltet den jüngsten Verlauf pro angemeldeter Person und Konversations-ID. Der Verlauf liegt standardmässig im Arbeitsspeicher des Backends. Das Modell kann einen Tool-Aufruf anfordern. Spring AI führt die Java-Methode aus und gibt das Ergebnis an das Modell zurück.
 
 ## Teil 4 - Chatfenster im Frontend einbauen
 
@@ -119,7 +137,7 @@ Importiere in `src/routes/+layout.svelte` die Komponente mit `import JobChat fro
 {/if}
 ```
 
-Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne den Chat unten rechts. Frage zum Beispiel «Welche offenen Java-Jobs gibt es?». Der SvelteKit-Endpunkt reicht das vorhandene Zugriffstoken an das Spring-Backend weiter. Das Modell fordert bei Bedarf einen Aufruf von `search_jobs` an. Du kannst auch über den Chat einen Job erstellen. Dazu ruft das Modell bei Bedarf das Tool `create_job` auf.
+Starte das Backend und das Frontend (`npm run dev`). Melde dich an und öffne den Chat unten rechts. Frage zum Beispiel «Welche offenen Java-Jobs gibt es?». Das Modell fordert bei Bedarf einen Aufruf von `search_jobs` an. Du kannst auch über den Chat einen Job erstellen. Dazu ruft das Modell bei Bedarf das Tool `create_job` auf.
 
 ## Teil 5 – Die Tools `search_jobs` und `create_job` im Backend als MCP-Server bereitstellen
 

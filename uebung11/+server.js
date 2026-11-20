@@ -4,9 +4,9 @@ import { API_BASE_URL } from '$app/env/private';
 export async function POST({ request, locals, fetch }) {
 	if (!locals.jwt_token) error(401, 'Sign in to use the chat.');
 
-	let messages;
+	let chatRequest;
 	try {
-		messages = await request.json();
+		chatRequest = await request.json();
 	} catch {
 		error(400, 'Invalid chat request.');
 	}
@@ -19,7 +19,7 @@ export async function POST({ request, locals, fetch }) {
 				Authorization: `Bearer ${locals.jwt_token}`,
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(messages)
+			body: JSON.stringify(chatRequest)
 		});
 	} catch {
 		error(502, 'Could not reach Freelancer4u.');

@@ -3,6 +3,7 @@
 
 	let open = $state(false);
 	let messages = $state([]);
+	let conversationId;
 	let draft = $state('');
 	let pending = $state(false);
 	let failure = $state('');
@@ -31,6 +32,7 @@
 		const content = message.trim();
 		if (!content || pending) return;
 
+		conversationId ??= crypto.randomUUID();
 		pending = true;
 		failure = '';
 		draft = '';
@@ -42,10 +44,7 @@
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-				body: JSON.stringify(next.slice(-21).map((turn) => ({
-					role: turn.role,
-					content: turn.content.slice(0, 8000)
-				})))
+				body: JSON.stringify({ conversationId, message: content })
 			});
 			const result = await response.json();
 			if (!response.ok) throw new Error(result.message || 'Could not send your message.');
