@@ -239,6 +239,11 @@ Vergleiche vor dem Test drei Werte: den **Identifier** der Auth0-API, die **Reso
 
 Die beiden Tools definieren, **was** Freelancer4u ausführen kann. MCP definiert, **wie** VS Code diese Tools entdeckt und aufruft.
 
+### Deployment
+Für das Deployment müssen die neuen Variablen (`MCP_RESOURCE_URL` und `OPENAI_API_KEY`) in GitHub unter **Settings → Secrets and variables → Actions** als Repository-Secrets hinterlegt werden.
+
+Wie oben bereits erwähnt, muss die Auth0-Konfiguration für den bereitgestellten MCP-Endpunkt wiederholt werden.
+
 ## Abgabe
 
 Pushe deine Änderungen in deine privaten GitHub-Repositories für Frontend und Backend. Gib beide Repositories für die Dozierenden frei und reiche die beiden URLs auf Moodle ein. Zugangsdaten bleiben in deiner lokalen Umgebung.
