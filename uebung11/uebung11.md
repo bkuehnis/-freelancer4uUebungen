@@ -19,9 +19,9 @@ Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest,
 Folgendes wird erwartet.
 - Im Backend muss ein sinnvoller Use Case umgesetzt werden, welcher die API von OpenAI aufruft.
 - Im Frontend muss ein Chat erstellt werden, wobei der Chat auf Tools im backend zugreifen kann.
-- Die Tools müssen über MCP an MCP Clients (zB. Visual Studio Code Copilot) zur verfügung gestellt werden.
-- Ein MCP Client muss mit dem Endpoint eingerechetet werden.
-- Der MCP Endpoint muss via Auth0 gesichert sein.
+- (optinal) Die Tools müssen über MCP an MCP Clients (zB. Visual Studio Code Copilot) zur verfügung gestellt werden.
+- (optinal) Ein MCP Client muss mit dem Endpoint eingerechetet werden.
+- (optinal) Der MCP Endpoint muss via Auth0 gesichert sein.
 
 ## OpenAI API Gateway
 
