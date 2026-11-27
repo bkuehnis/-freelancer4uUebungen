@@ -5,19 +5,20 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.HttpHeaders;
 
 import ch.zhaw.freelancer4u.model.Company;
 import ch.zhaw.freelancer4u.security.TestSecurityConfig;
 import ch.zhaw.freelancer4u.service.MailValidatorService;
+import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -32,13 +33,14 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
+@RequiredArgsConstructor
 @AutoConfigureMockMvc
 @Import(TestSecurityConfig.class)
 @TestMethodOrder(OrderAnnotation.class)
 
 public class CompanyControllerTest {
-    @Autowired
-    private MockMvc mvc;
+    private final MockMvc mvc;
 
     @MockitoBean
     private MailValidatorService mailValidatorService;

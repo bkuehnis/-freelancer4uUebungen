@@ -12,7 +12,6 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -20,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import ch.zhaw.freelancer4u.model.Company;
@@ -27,21 +27,22 @@ import ch.zhaw.freelancer4u.model.Job;
 import ch.zhaw.freelancer4u.model.JobType;
 import ch.zhaw.freelancer4u.repository.CompanyRepository;
 import ch.zhaw.freelancer4u.security.TestSecurityConfig;
+import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
+@RequiredArgsConstructor
 @Import(TestSecurityConfig.class)
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
 public class JobControllerTest {
 
-    @Autowired
-    private MockMvc mvc;
+    private final MockMvc mvc;
 
-    @Autowired
-    CompanyRepository companyRepository;
+    private final CompanyRepository companyRepository;
 
     @MockitoBean
     private JobTitleGenerator jobTitleGenerator;

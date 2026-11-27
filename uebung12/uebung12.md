@@ -26,7 +26,7 @@ Folgendes wird erwartet.
 
 **b)** Das Company-Formular in `src/routes/companies/+page.svelte` verwendet für die E-Mail-Adresse bereits ein Pflichtfeld mit `type="email"`. Der Browser kann dadurch einfache Eingabefehler direkt anzeigen. Diese Validierung kann jedoch vom User umgangen werden aus diesem Grund, wird eine Email Validierung im Backend umgesetzt. 
 
-Ergänze in der `pom.xml` im Backend in `<dependencies>` den WebClient-Starter. Spring Boot stellt damit einen `WebClient.Builder` bereit, während das Backend Spring MVC verwendet. [Spring Boot WebClient](https://docs.spring.io/spring-boot/reference/io/rest-client.html#io.rest-client.webclient)
+**c)** Ergänze in der `pom.xml` im Backend in `<dependencies>` den WebClient-Starter. Spring Boot stellt damit einen `WebClient.Builder` bereit, während das Backend Spring MVC verwendet. [Spring Boot WebClient](https://docs.spring.io/spring-boot/reference/io/rest-client.html#io.rest-client.webclient)
 
 ```xml
 <dependency>
@@ -49,7 +49,7 @@ Kopiere die folgenden Klassen nach `src/main/java/ch/zhaw/freelancer4u/` in die 
 | [MailValidationConfig.java](MailValidationConfig.java) | `service` |
 | [MailValidatorService.java](MailValidatorService.java) | `service` |
 
-`MailValidationConfig` erstellt den konfigurierten HTTP-Client. Der Service erhält ihn über den von Lombok erzeugten Konstruktor. Nur das Java-Backend ruft Disify auf und entscheidet, ob eine Adresse gespeichert werden darf. Diese Prüfung gilt auch für direkte Aufrufe des REST-Endpunkts.
+`MailValidationConfig` stellt den konfigurierten `WebClient` als Spring-Bean bereit. In `MailValidatorService` erzeugt Lombok mit `@RequiredArgsConstructor` einen Konstruktor für das Feld `private final WebClient disifyClient`. Spring übergibt diesem Konstruktor die Bean automatisch. Nur das Java-Backend ruft Disify auf und entscheidet, ob eine Adresse gespeichert werden darf. Diese Prüfung gilt auch für direkte Aufrufe des REST-Endpunkts.
 
 **d)** Importiere `ch.zhaw.freelancer4u.service.MailValidatorService` im `CompanyController` und ergänze `private final MailValidatorService mailValidatorService;`. Ersetze in `createCompany` nach der bestehenden Rollenprüfung die Zeile, die das `Company`-Objekt erstellt, durch diesen Block:
 
@@ -130,6 +130,7 @@ Die Tests sollen auch ohne echte Auth0- und OpenAI-Zugangsdaten laufen. Übernim
 | [JobControllerTest.java](JobControllerTest.java) | `src/test/java/ch/zhaw/freelancer4u/controller/JobControllerTest.java` |
 
 - **Testprofil.** `@ActiveProfiles("test")` aktiviert das Profil für diese drei Testklassen. Spring Boot lädt `application-test.properties` zusätzlich zur normalen Konfiguration. Die Datei überschreibt den Auth0-Issuer und den OpenAI-Key mit Platzhaltern. Das genügt für den Start der Testumgebung. [Spring zu @ActiveProfiles](https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/env-profiles.html)
+- **Konstruktor-Injection in den Tests.** Lombok erzeugt mit `@RequiredArgsConstructor` den Konstruktor für die `final`-Felder. Mit `@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)` übergibt Spring dem Konstruktor den `MockMvc` und im `JobControllerTest` das `CompanyRepository`. [Spring zur Konstruktor-Injection in Tests](https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/support-classes.html#testcontext-junit-jupiter-di-constructor)
 - **Mocks.** `TestSecurityConfig` liefert wie bisher Testidentitäten für `Bearer admin` und `Bearer user`. Neu ersetzt `@MockitoBean` im `CompanyControllerTest` den Disify-Service und im `JobControllerTest` die KI-Titelgenerierung durch Testobjekte. Mit `when(...).thenReturn(...)` gibst du vor, was diese Objekte zurückliefern. So prüfen die Tests die Controller, Zugriffsrechte und Datenbankzugriffe ohne Live-Aufrufe an diese Dienste. Die Ablehnung einer temporären Adresse prüfst du zusätzlich mit dem Postman-Schritt oben. [Spring zu @MockitoBean](https://docs.spring.io/spring-framework/reference/testing/annotations/integration-spring/annotation-mockitobean.html)
 
 
@@ -183,7 +184,7 @@ Die Nachricht geht an die im Token hinterlegte E-Mail-Adresse. Der Status wurde 
 
 **a)** Richte in [SonarQube Cloud](https://sonarcloud.io/) ein Projekt ein und verbinde es mit deinem Freelancer4u-Backend-Repository auf GitHub. Das Video zeigt wie ein Projekt eingerichtet wird. Prüfe in SonarQube Cloud unter **Administration → Analysis Method**, ob **Automatic Analysis** aktiviert ist. SonarQube Cloud liest den Code direkt aus GitHub. Für diese Methode entfällt die Einrichtung eines Sonar-Workflows und eines `SONAR_TOKEN` in GitHub Actions. [SonarQube Cloud für GitHub](https://docs.sonarsource.com/sonarqube-cloud/getting-started/github#analysis-methods)
 
-<video controls src="sonar_project_setup.mov" title="Einrichtung vom Sonar Projekt"></video>
+[Einrichtung des SonarQube-Projekts (Video herunterladen)](sonar_project_setup.mov?raw=true)
 
 **b)** Öffne das Projekt in SonarQube Cloud und prüfe, ob der letzte Commit des Standardbranches analysiert wurde. Weitere Änderungen auf diesem Branch lösen eine neue Analyse aus, beispielsweise nach dem Zusammenführen eines Pull Requests. [Analyseergebnisse prüfen](https://docs.sonarsource.com/sonarqube-cloud/getting-started/first-analysis)
 

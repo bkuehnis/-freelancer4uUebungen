@@ -232,7 +232,7 @@ Vergleiche vor dem Test drei Werte: den **Identifier** der Auth0-API, die **Reso
 
 **Hinweis:** Falls beim Einrichten nach der **Client ID** nachgefragt wird, verwende die aus Schritt d) der Auth0-Anleitung.
 
-<video controls src="img/setup_mcp.mov" title="Title"></video>
+[MCP einrichten (Video herunterladen)](img/setup_mcp.mov?raw=true)
 
 
 **a)** Prüfe im Copilot-Chat, ob `search_jobs` und `create_job` verfügbar sind. Frage zuerst «Suche mit dem Freelancer4u-Tool nach offenen Java-Jobs». Rufe danach `create_job` mit einem Demo-Auftrag auf, zum Beispiel «Erstelle den Job Java-API implementieren bei Demo AG für 500 mit Jobtyp IMPLEMENT und der Beschreibung REST-Endpunkt entwickeln». Falls die Firma fehlt, legt das Tool sie an. Suche den Job danach im Chatfenster von Freelancer4u und prüfe nach dem Neuladen auch die Jobs-Seite.
