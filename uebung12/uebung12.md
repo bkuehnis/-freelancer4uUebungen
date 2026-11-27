@@ -86,6 +86,30 @@ Der Screenshot zeigt den POST-Request mit JSON und die Antwort `400 Bad Request`
 
 ![Postman zeigt POST auf /api/company mit JSON und der Antwort 400 Bad Request](postman.png)
 
+**f)** Passe im Frontend die Aktion `createCompany` in `src/routes/companies/+page.server.js` an. Entferne Leerzeichen am Anfang und Ende der E-Mail-Adresse, bevor du die Formulardaten an das Java-Backend sendest.
+
+```js
+const company = {
+    name: data.get('name'),
+    email: String(data.get('email') ?? '').trim()
+};
+```
+
+Passe den `catch`-Block nach dem Aufruf von `POST /api/company` an. Bei `400` bittet das Formular um eine andere Adresse. Bei `503` bittet es darum, es später noch einmal zu versuchen. Die Seite in `src/routes/companies/+page.svelte` zeigt die Meldung bereits über `form.error` an.
+
+```js
+} catch (failure) {
+    const status = axios.isAxiosError(failure) ? failure.response?.status : undefined;
+    if (status === 400) {
+        return fail(400, { error: 'Use a valid, non-disposable company email address.' });
+    }
+    if (status === 503) {
+        return fail(503, { error: 'Email validation is unavailable. Try again later.' });
+    }
+    return fail(502, { error: 'Could not create company.' });
+}
+```
+
 Teste im Company-Formular eine Adresse mit fehlerhaftem Format, eine syntaktisch gültige Einwegadresse und eine akzeptierte Testadresse. Bei der Einwegadresse zeigt das Formular den Fehler aus dem Backend an. [Disify-Fehlerbehandlung](https://docs.disify.com/api/errors.html)
 
 ### Warum braucht es eine Prüfung im Backend?
