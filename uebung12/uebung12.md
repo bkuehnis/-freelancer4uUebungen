@@ -1,245 +1,129 @@
-# 🧪 Übung 12 - API-Anbindung und Code-Analyse
+# 3SE2 – Übung 12
 
-**Themen:** Anbindung von Drittsystemen, E-Mail-Validierung, E-Mail-Versand, Code-Analyse
+**Themen:** Anbindung von Drittsystemen, E-Mail-Validierung, E-Mail-Versand und Code-Analyse
 
-Diese Übung besteht aus drei Teilen:  
-1. **E-Mail-Validierung:** Integration der API [Disify](https://www.disify.com/) im Frontend und Backend zur Überprüfung von E-Mail-Adressen.  
-2. **E-Mail-Versand:** Automatisches Versenden von E-Mails bei bestimmten Aktionen.  
-3. **Code-Analyse:** Statische Analyse des Projekts mit [SonarCloud](https://sonarcloud.io), inklusive Behebung von Bugs, Sicherheitsproblemen oder Code Smells.
+In dieser Übung prüfst du das Format der E-Mail-Adresse im Company-Formular. Das Java-Backend prüft die Adresse beim Aufruf von `POST /api/company` mit Disify. Danach verschickst du beim Selbstzuweisen und Abschliessen eines Jobs eine Nachricht mit dem neuen Status. Im letzten optionalen Teil analysierst du das Backend mit SonarQube Cloud.
 
----
+## Ausgangslage
 
-## 📎 Abgabe
+Starte mit deinen bisherigen Lösungen. Wenn du mit der Musterlösung arbeitest, verwende die folgenden Stände **vor Übung 12**. Vergesse dabei nicht die `.env` Datein im Front und Backend anzupassen.
 
-**Folgendes Artefakt ist über Moodle einzureichen:**
+## Die Übung darf alternativ im Einzelprojekt umgesetzt werden.
+Folgendes wird erwartet.
+- Im Backend muss ein Drittsystem angebunden werden.
+- (optional) Bei einem Use-Case wird ein Email versendet.
+- (optional) Das Backend wird via SonarQube analysiert.
 
-- Die **URL** eines privaten GitHub-Repositories  
-- Das Repository muss für die Dozierenden freigegeben sein  
-- Es enthält die implementierten **Java-Klassen**
 
----
+## Teil 1 – E-Mail-Adressen prüfen
 
-## 🛠️ Teil 1.  E-Mail-Validierung
-Zu Beginn mach dich mit der API vertraut, indem du die Dokumentation der API liest. Beachte dabei, dass wir nur die Funktion "Single Email Address" (siehe https://docs.disify.com/#single-email-address) mit dem Parameter "Email" verwenden werden. Als nächstes teste die API mit Postman. Das Ergebnis sollte in etwa wie folgt aussehen.
+**a)** Teste die Disify-API zuerst direkt in Postman.
 
-Wir definieren, dass eine E-Mail-Adresse Valid ist, wenn die Properties folgenden Wert haben.
--	format : true
--	disposable: false
--	dns: true
+1. Erstelle einen Request mit **POST** und der URL `https://disify.com/api/email`.
+2. Wähle unter **Authorization** die Option **No Auth**.
+3. Wähle unter **Body** die Option **x-www-form-urlencoded**. Gib als **Key** `email` und als **Value** `user@disposable-inbox.test` ein. Postman kodiert den Wert und setzt den passenden Content-Type.
+4. Klicke **Send** und lies das JSON. HTTP 200 bedeutet, dass Disify die Prüfung ausgeführt hat. Die Beispieladresse wird als temporär erkannt. Akzeptiert wird eine Adresse in dieser Übung, wenn `format` und `dns` auf `true` und `disposable` auf `false` stehen. Mail-DNS bestätigt die Domain. Ob das einzelne Postfach existiert, wird dabei nicht geprüft. [Disify Single Email Check](https://docs.disify.com/api/email.html)
 
----
+**b)** Das Company-Formular in `src/routes/companies/+page.svelte` verwendet für die E-Mail-Adresse bereits ein Pflichtfeld mit `type="email"`. Der Browser kann dadurch einfache Eingabefehler direkt anzeigen. Diese Validierung kann jedoch vom User umgangen werden aus diesem Grund, wird eine Email Validierung im Backend umgesetzt. 
 
-![Ein Beispiel mit einer temporären Domain](email_validation1.png)
+Ergänze in der `pom.xml` im Backend in `<dependencies>` den WebClient-Starter. Spring Boot stellt damit einen `WebClient.Builder` bereit, während das Backend Spring MVC verwendet. [Spring Boot WebClient](https://docs.spring.io/spring-boot/reference/io/rest-client.html#io.rest-client.webclient)
 
-Ein Beispiel mit einer temporären Domain zeigt, wie die API eine ungültige E-Mail-Adresse erkennt. Temporäre Domains werden häufig für einmalige oder anonyme E-Mail-Adressen verwendet und sind daher für die meisten Anwendungen ungeeignet. Die API überprüft, ob die Domain der E-Mail-Adresse als temporär eingestuft ist, und markiert diese entsprechend.
-
----
-
-![Ein Beispiel mit einer validen E-Mail-Adresse](email_validation2.png)
-
-Ein Beispiel mit einer validen Domain.
-
----
-
-### 1.1 Validierung im Frontend Serverseitig
-
-Als erstes wird die API im Frontend serverseitig verwenden. Dabei benutzen wir die Library axios. Die folgende Funktion muss in der Datei `companies/ +page.server.js` bei der Funktion `actions` `createCompany` ändert sich der Code wie folgt.
-```javascript
-createCompany: async ({ request, locals }) => {
-
-        const jwt_token = locals.jwt_token;
-
-        if (!jwt_token) {
-            throw error(401, 'Authentication required');
-        }
-
-        const data = await request.formData();
-        const company = {
-            name: data.get('name'),
-            email: data.get('email')
-        };
-
-        try {
-
-            // Validate email first
-            const validationResponse = await axios({
-                method: "get",
-                url: `https://disify.com/api/email/${company.email}`
-            });
-
-            console.log("Validated email " + company.email);
-            console.log(validationResponse.data);
-
-            if (!validationResponse.data.format || validationResponse.data.disposable || !validationResponse.data.dns) {
-                return { success: false, error: `Email ${company.email} is not valid.` };
-            }
-
-            await axios({
-                method: "post",
-                url: `${API_BASE_URL}/api/company`,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: "Bearer " + jwt_token,
-                },
-                data: company,
-            });
-            return { success: true };
-        } catch (error) {
-            console.log('Error creating company:', error);
-            return { success: false, error: 'Could not create company' };
-        }
-    }
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-webclient</artifactId>
+</dependency>
 ```
 
-Wenn eine ungültige oder temporäre E-Mail-Adresse verwendet wird z.B. `benjamin@example.com`, wird folgende Meldung angezeigt:
-![Domain "example.com" gilt als temporäre Domain und somit als ungültige E-Mail-Adresse.](image.png)
-
-
-### 1.2 Validierung im Backend
-Theoretisch wäre es möglich, dass das Frontend von einer anderen Applikation, wie z. B. einer mobilen App, genutzt wird. Um sicherzustellen, dass die E-Mail-Adresse beim Erstellen einer Company gültig ist, werden wir dieselbe API im Backend erneut aufrufen.
-Dazu müssen die folgenden Pakete installiert werden: `spring-boot-starter-webflux`. 
-![dependency](<dependency.png>)
-
-Als Erstes erstellen wir eine Utility-Klasse namens "ServiceUtils" im Ordner "service", um die Requests in der Konsole zu protokollieren.
-
-
-```java
-package ch.zhaw.freelancer4u.service;
-
-import org.slf4j.Logger;
-import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
-
-public class ServiceUtils {
-    public static ExchangeFilterFunction logRequest(Logger logger) {
-        return (clientRequest, next) -> {
-            logger.info("Request: {} {}", clientRequest.method(), clientRequest.url());
-            clientRequest.headers()
-                    .forEach((name, values) -> values.forEach(value -> logger.info("{}={}", name, value)));
-            return next.exchange(clientRequest);
-        };
-    }
-}
-```
-
-Nun erstellen wir die Klasse `MailInformation` im Ordner `model`, welche wir benötigen werden, um die Antwort der API in ein Java Objekt zu serialisieren.
-
-
-```java
-package ch.zhaw.freelancer4u.model;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.Getter; 
-import lombok.NoArgsConstructor;
-
-/**
- * Represents a response object for the api https://docs.disify.com/
- * 
- * For informations about the properties see: https://docs.disify.com/?java#json-response-parameters
- **/
-@Getter
-@NoArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class MailInformation{
-    private boolean format;
-    private boolean alias;
-    private String domain;
-    private boolean disposable;
-    private boolean dns;
-}
-```
-
-Um die API aufzurufen, erstellen wir einen neuen Service `MailValidatorService` im Ordner `service`.
-
-```java
-package ch.zhaw.freelancer4u.service;
-
-import java.time.Duration;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-
-import ch.zhaw.freelancer4u.model.MailInformation;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-
-@Service
-public class MailValidatorService {
-    private static final String DISIFY_EMAIL_VALIDATOR_BASE_URL = "https://disify.com";
-
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(3);
-    private static final String USER_AGENT = "Spring 5 WebClient";
-    private static final Logger logger = LoggerFactory.getLogger(MailValidatorService.class);
-    private final WebClient webClient;
-
-    @Autowired
-    public MailValidatorService() {
-        this.webClient = WebClient.builder()
-                .baseUrl(DISIFY_EMAIL_VALIDATOR_BASE_URL)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, 
-                               MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.USER_AGENT, USER_AGENT)
-                .filter(ServiceUtils.logRequest(logger))
-                .build();
-    }
-
-    public MailInformation validateEmail(String email) {
-        return webClient
-                // http-method
-                .get()
-                // uri to api
-                .uri("/api/email/{email}", email)
-                // Proceed to declare how to extract the response.
-                .retrieve() 
-                // mapping to a certain class
-                .bodyToMono(MailInformation.class) 
-                //Optional: pass a timeout for the request
-                //Blocks until next signal is received or the timeout expires
-                .block(REQUEST_TIMEOUT);
-    }
-}
-```
-
-Nun müssen wir im `CompanyController` folgende Property hinzufügen.
-
-```java
-    @Autowired
-    MailValidatorService mailValidatorService;
-```
-
-### 1.4 Aufgabenstellung
-In der Funktion `createCompany` soll die `validateEmail` Funktion des Service `EmailValidatorService` aufgerufen werden. Dabei soll, wie im Frontend überprüft werden, ob die E-Mail-Adresse gültig und nicht zu einer temporären Domain gehört. Fall die E-Mail-Adresse ungültig ist kann folgendes zurückgegeben werden.
-
-```java
-return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-```
-
-Du kannst deine Umsetzung mit Postman überprüfen. 
-![Überprüfung der Aufgabe des Teil 1](postman.png)
-
-
-## ✨ Teil 2: E-Mail senden
-
-E-Mails können über SMTP (siehe https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) versendet werden. Damit du E-Mails versenden kannst, musst du deine eigene E-Mail-Adresse verwenden. Es empfiehlt sich, eine neue E-Mail-Adresse zu erstellen, damit du dein Passwort nicht im Code speichern musst. Diese Anleitung wird mit dem E-Mail Dienst https://gmail.com.
-1. Erstelle einen neuen Gmail Account.
-2. Bei dem User-Icon oben rechts wähle `Manage your Google Account` aus.
-3. Aktiviere `2-Step Verification` zB. mit deiner Mobiltelefonnummer unter Security -> How you sign in to Google.
-4. Erstelle ein App Password unter https://myaccount.google.com/apppasswords
-    1. Speichere das Password, da es anschliessend nicht mehr ersichtlich sein wird. Leerzeichen gehören zum Password.
-    2. App Password Menu wird unter `2-Step Verification` angezeigt, nachdem du das erste App Password erstellt hast.
-
-Hinweise: 
--	Gewisse E-Mail Provider erlauben es aus Sicherheitsbedenken nicht mehr, Drittapplikationen sich via E-Mail-Password zu Authentifizieren. Ein Beispiel dazu ist https://outlook.com. Informationen zur Konfiguration von outlook findest du hier: https://learn.microsoft.com/en-us/entra/msal/java/. Dies ist jedoch mit einer ZHAW-E-Mail nicht möglich, da wir die Berechtigungen nicht haben. 
-
-Folgende Maven dependency muss hinzugefügt werden: `spring-boot-starter-mail`
-
- ![dependency mail](dendency_mail.png)
-
-In der Datei `application.properties` füge folgende Properties hinzu und ändere den Wert von Username mit deiner E-Mail und password mit dem Apps Password, welches du erstellt hast.
+Ergänze in `src/main/resources/application.properties`:
 
 ```properties
+freelancer.disify.base-url=${DISIFY_BASE_URL:https://disify.com}
+```
+
+Kopiere die folgenden Klassen nach `src/main/java/ch/zhaw/freelancer4u/` in die angegebenen Pakete.
+
+| Datei | Paket |
+| --- | --- |
+| [MailInformation.java](MailInformation.java) | `model` |
+| [MailValidationConfig.java](MailValidationConfig.java) | `service` |
+| [MailValidatorService.java](MailValidatorService.java) | `service` |
+
+`MailValidationConfig` erstellt den konfigurierten HTTP-Client. Der Service erhält ihn über den von Lombok erzeugten Konstruktor. Nur das Java-Backend ruft Disify auf und entscheidet, ob eine Adresse gespeichert werden darf. Diese Prüfung gilt auch für direkte Aufrufe des REST-Endpunkts.
+
+**d)** Importiere `ch.zhaw.freelancer4u.service.MailValidatorService` im `CompanyController` und ergänze `private final MailValidatorService mailValidatorService;`. Ersetze in `createCompany` nach der bestehenden Rollenprüfung die Zeile, die das `Company`-Objekt erstellt, durch diesen Block:
+
+```java
+String email = fDTO.getEmail();
+if (!mailValidatorService.isValid(email == null ? null : email.strip())) {
+    return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+}
+
+Company fDAO = new Company(fDTO.getName(), email.strip());
+```
+
+**e)** Teste den REST-Endpunkt direkt in Postman. Damit prüfst du die Validierung im Spring-Backend unabhängig vom SvelteKit-Formular.
+
+1. Starte das Backend und melde dich im lokalen Frontend mit dem Admin-Testkonto an. Öffne die Entwicklerwerkzeuge des Browsers und suche in der Cookie-Ansicht des Frontends nach `jwt_token`. Kopiere den Wert für deinen lokalen Test. Gib das Token weder weiter noch in eine geteilte Postman-Collection ein.
+2. Erstelle einen Request mit **POST** und der URL `http://127.0.0.1:8080/api/company`. Passe Host und Port an, falls dein Backend woanders läuft.
+3. Wähle unter **Authorization** die Option **Bearer Token** und füge den Cookie-Wert ins Feld **Token** ein. Postman ergänzt den Präfix `Bearer`. [Bearer-Token in Postman](https://learning.postman.com/docs/use/send-requests/authorization/authorization-types/#bearer-token)
+4. Wähle unter **Body → raw** als Format **JSON**. Sende folgende Daten.
+
+```json
+{
+  "name": "Demo AG",
+  "email": "user@disposable-inbox.test"
+}
+```
+
+| Test | Erwartetes Ergebnis |
+| --- | --- |
+| Temporäre Testadresse aus dem Beispiel | `400 Bad Request`. Die Company wird nicht gespeichert. |
+| Eigene, von Disify akzeptierte Testadresse | `201 Created`. Die Antwort enthält die erstellte Company. Prüfe die Liste im Frontend oder rufe `GET /api/company` mit demselben Token auf. |
+| Disify ist nicht erreichbar oder meldet `dns_indeterminate` | `503 Service Unavailable`. Wiederhole den Versuch später. Die Company wird nicht gespeichert. |
+
+Der Screenshot zeigt den POST-Request mit JSON und die Antwort `400 Bad Request`. Verwende für den Test die Adresse aus dem JSON-Beispiel oben.
+
+![Postman zeigt POST auf /api/company mit JSON und der Antwort 400 Bad Request](postman.png)
+
+Teste im Company-Formular eine Adresse mit fehlerhaftem Format, eine syntaktisch gültige Einwegadresse und eine akzeptierte Testadresse. Bei der Einwegadresse zeigt das Formular den Fehler aus dem Backend an. [Disify-Fehlerbehandlung](https://docs.disify.com/api/errors.html)
+
+### Warum braucht es eine Prüfung im Backend?
+
+`type="email"` prüft im Browser das Format der Eingabe. Das Attribut `required` verhindert, dass das Feld leer bleibt. Eine Einwegadresse kann trotzdem ein gültiges Format haben. Ausserdem kann ein Client wie Postman den REST-Endpunkt direkt aufrufen und damit die Formularprüfung umgehen.
+
+Spring Boot prüft deshalb vor dem Speichern mit Disify das Format, die Mail-DNS-Einträge der Domain und Hinweise auf Einwegadressen. Ob das einzelne Postfach existiert oder der Person gehört, lässt sich daraus nicht ableiten.
+
+### Backend-Tests anpassen
+
+Die Tests sollen auch ohne echte Auth0- und OpenAI-Zugangsdaten laufen. Übernimm dazu die folgenden Dateien aus der Musterlösung in das Backend.
+
+| Vorlage | Ziel im Backend |
+| --- | --- |
+| [application-test.properties](application-test.properties) | `src/test/resources/application-test.properties` |
+| [Freelancer4uApplicationTests.java](Freelancer4uApplicationTests.java) | `src/test/java/ch/zhaw/freelancer4u/Freelancer4uApplicationTests.java` |
+| [CompanyControllerTest.java](CompanyControllerTest.java) | `src/test/java/ch/zhaw/freelancer4u/controller/CompanyControllerTest.java` |
+| [JobControllerTest.java](JobControllerTest.java) | `src/test/java/ch/zhaw/freelancer4u/controller/JobControllerTest.java` |
+
+- **Testprofil.** `@ActiveProfiles("test")` aktiviert das Profil für diese drei Testklassen. Spring Boot lädt `application-test.properties` zusätzlich zur normalen Konfiguration. Die Datei überschreibt den Auth0-Issuer und den OpenAI-Key mit Platzhaltern. Das genügt für den Start der Testumgebung. [Spring zu @ActiveProfiles](https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/env-profiles.html)
+- **Mocks.** `TestSecurityConfig` liefert wie bisher Testidentitäten für `Bearer admin` und `Bearer user`. Neu ersetzt `@MockitoBean` im `CompanyControllerTest` den Disify-Service und im `JobControllerTest` die KI-Titelgenerierung durch Testobjekte. Mit `when(...).thenReturn(...)` gibst du vor, was diese Objekte zurückliefern. So prüfen die Tests die Controller, Zugriffsrechte und Datenbankzugriffe ohne Live-Aufrufe an diese Dienste. Die Ablehnung einer temporären Adresse prüfst du zusätzlich mit dem Postman-Schritt oben. [Spring zu @MockitoBean](https://docs.spring.io/spring-framework/reference/testing/annotations/integration-spring/annotation-mockitobean.html)
+
+
+## (optional) Teil 2 – Bei einem Jobstatuswechsel eine E-Mail senden
+
+**a)** Füge unter `<dependencies>` im Backend den Mail-Starter hinzu.
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+```
+
+Ergänze im Backend in `src/main/resources/application.properties` die Gmail-SMTP-Einstellungen.
+
+```properties
+freelancer.mail.from=${SMTP_FROM:freelancer4u@example.invalid}
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
 spring.mail.username=${GMAIL_EMAIL}
@@ -247,162 +131,43 @@ spring.mail.password=${GMAIL_APP_PASSWORD}
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 spring.mail.properties.mail.debug=true
-
 ```
 
-In der Datei `.vscode/launch.json` fügt bei `env` das Propertie `"GMAIL_EMAIL": "..."` und `"GMAIL_APP_PASSWORD": "..."` hinzu, wobei ihr den Wert `...` mit dem Open AI Key von Moodle ersetzten müsst.
+Verwende ein eigenes Gmail-Testkonto, für das die Bestätigung in zwei Schritten aktiviert ist und App-Passwörter verfügbar sind. Erstelle ein Google-App-Passwort und setze die folgenden Variablen in der lokalen Umgebung des Backend-Prozesses.
 
-Sollte wie folgt aussehen:
+| Variable | Wert |
+| --- | --- |
+| `GMAIL_EMAIL` | Gmail-Adresse des Testkontos |
+| `GMAIL_APP_PASSWORD` | Google-App-Passwort des Testkontos |
+| `SMTP_FROM` | Dieselbe Gmail-Adresse als Absender |
 
-```json
-"env": {
-                "MONGODB_URI": "...",
-                "AUTH0_DOMAIN": "...",
-                "OPEN_AI_KEY": "...",
-                "GMAIL_EMAIL" : "...",
-                "GMAIL_APP_PASSWORD": "..."
-            }
-```
- 
-Anschliessend erstellen wir die Model Klasse `Mail`.
+Halte das App-Passwort aus Git heraus und sende Testnachrichten nur an ein Postfach, das du selbst kontrollierst. Mit `spring.mail.properties.mail.debug=true` siehst du den SMTP-Ablauf im lokalen Backend-Log. [Google-App-Passwörter](https://support.google.com/mail/answer/185833) · [Google SMTP-Einstellungen](https://support.google.com/a/answer/176600)
+
+**b)** Kopiere [MailService.java](MailService.java) in das Backend-Paket `ch.zhaw.freelancer4u.service`. Importiere die Klasse im `JobServiceController` und ergänze `private final MailService mailService;`.
+
+Füge in `assignToMe` und `completeMyJob` innerhalb von `if (job.isPresent())` vor dem erfolgreichen Return jeweils den folgenden Aufruf ein.
 
 ```java
-package ch.zhaw.freelancer4u.model;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-
-@Getter
-@Setter
-@NoArgsConstructor
-public class Mail {
-    private String to;
-    private String subject;
-    private String message;
-}
+mailService.sendJobStatus(userEmail, job.get());
 ```
 
-Um die E-Mails zu versenden, erstellen wir die Klasse `MailService`.
+Die Nachricht geht an die im Token hinterlegte E-Mail-Adresse. Der Status wurde zu diesem Zeitpunkt bereits gespeichert. Bei einem SMTP-Fehler bleibt die Statusänderung gültig und das Backend protokolliert den Versandfehler.
 
-```java
-package ch.zhaw.freelancer4u.service;
+**c)** Starte das Backend und Frontend. Weise im Frontend deinem Testkonto einen offenen Job zu und schliesse ihn ab. Prüfe die beiden Nachrichten im Postfach der E-Mail-Adresse, die deinem Freelancer4u-Testkonto zugeordnet ist. Sie sollen den Titel und die Statuswerte `ASSIGNED` und `DONE` enthalten. Wiederhole einen ungültigen Statuswechsel und prüfe, dass keine zusätzliche Nachricht entsteht.
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
-import ch.zhaw.freelancer4u.model.Mail;
+## (optional) Teil 3 – Backend mit SonarQube Cloud analysieren
 
-@Service
-public class MailService {
-    @Autowired
-    private JavaMailSender mailSender;
+**a)** Richte in [SonarQube Cloud](https://sonarcloud.io/) ein Projekt ein und verbinde es mit deinem Freelancer4u-Backend-Repository auf GitHub. Das Video zeigt wie ein Projekt eingerichtet wird. Prüfe in SonarQube Cloud unter **Administration → Analysis Method**, ob **Automatic Analysis** aktiviert ist. SonarQube Cloud liest den Code direkt aus GitHub. Für diese Methode entfällt die Einrichtung eines Sonar-Workflows und eines `SONAR_TOKEN` in GitHub Actions. [SonarQube Cloud für GitHub](https://docs.sonarsource.com/sonarqube-cloud/getting-started/github#analysis-methods)
 
-    public boolean sendMail(Mail mail) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(mail.getTo());
-            message.setSubject(mail.getSubject());
-            message.setText(mail.getMessage());
-            mailSender.send(message);
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-}
-```
+<video controls src="sonar_project_setup.mov" title="Einrichtung vom Sonar Projekt"></video>
 
-### 2.1 Aufgabenstellung
-Ändere den Code des Controllers `JobServiceController` so, dass beim Zuweisen oder Abschliessen eines Jobs eine E-Mail an die entsprechende Person versendet wird. Das Versenden der E-Mail soll in den folgenden Methoden implementiert werden: `assignToMe`, `completeMyJob`. Um die E-Mail zu versenden, soll die Klasse `MailService.java` verwendet werden. Die E-Mail sollte den aktuellen Status des Jobs enthalten. Ein Beispiel dazu findest du im folgenden Bild.
- 
-![mail example](mail_example.png)
+**b)** Öffne das Projekt in SonarQube Cloud und prüfe, ob der letzte Commit des Standardbranches analysiert wurde. Weitere Änderungen auf diesem Branch lösen eine neue Analyse aus, beispielsweise nach dem Zusammenführen eines Pull Requests. [Analyseergebnisse prüfen](https://docs.sonarsource.com/sonarqube-cloud/getting-started/first-analysis)
+
+**c)** Öffne die Findings in SonarQube Cloud. Behebe drei geeignete Findings, sofern so viele vorhanden sind. Prüfe nach der nächsten Analyse, ob sie behoben sind. Wenn weniger vorhanden sind, dokumentiere die verfügbaren Findings.
+
+**d)** Damit wir die SonarQube Analyse überprüfen können, muss diese öffentlich sein.Öffne als Projekt-Admin **Administration → Permissions**. Wähle unter **Project visibility** die Option **Public** und bestätige. Damit sind die Analyseergebnisse und der analysierte Quellcode auch ohne Anmeldung einsehbar. [Projektsichtbarkeit in SonarQube Cloud](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/administering-your-projects/setting-permissions)
 
 
-## ✨ Teil 3: Code Analyse mit Sonarcloud
-Das Ziel dieses Abschnittes ist es zu zeigen, wie das Projekt Freelancer4U mit Sonarcloud analysiert werden kann. 
-1.	Erstelle ein Account auf https://sonarcloud.io.
+## Abgabe
 
-2.	Erstelle ein neues Projekt auf Sonarcloud.
-  ![alt text](sonar1.png)
-
-3.	Wähle `create a project manually`  
-![alt text](sonar2.png)
-
-4.	Wähle `Create another organization` und dann `create one manually` und erstellt eine Organisation. Dabei spielt der Name keine Rolle. Wähle den `Free plan` aus und dann `Create Organisation`.
- ![alt text](sonar3.png)
- 
-5.	Fülle folgende Felder aus. Der `Project key` muss über alle Projekte auf Sonarcloud eindeutig sein. Du kannst zum Beispiel folgenden Key verwenden: ch.zhaw.[kürzel].freelancer4u
- ![alt text](sonar4.png)
-
-
- 
-6.	Wähle `Previous version` aus und `Create project`
- ![alt text](sonar5.png)
-
-7.	Anschliessend wähle `With Guthub Actions` und dann Maven aus. 
- ![alt text](sonar6.png)
-
-8. Füge in github das SONAR_TOKEN secret hinzu.
-
-9.	Füge den Text in der Anleitung der Datei `pom.xml` hinzu.  
-![alt text](sonar7.png)
-
-10. Erstelle die Datei `.github/workflows/build.yml`. Wichtig, verwende die Vorlage von unten. Der Unterschied zu der Anleitung von Sonar ist es, dass eine andere Java Version verwendet wird und dass neben dem Sonar Secret auch die MongoDB und Auth0 secrets mitgegeben werden.
-
-```yml
-name: SonarQube
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    types: [opened, synchronize, reopened]
-jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 25
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
-        with:
-          java-version: 25
-          distribution: zulu
-      - name: Cache SonarQube packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache Maven packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=zhaw-iwi_freelancer
-```
-
-11.	Damit die statische Analyse durchgeführt werden kann, muss die Applikation lauffähig sein und alle Unit-Test gehen. 
-Starte die Applikation, um dies zu testen und führe alle Unit-Tests durch. 
-Hinweis: Falls einen Unit-Test nicht geht und Du nicht weisst warum, kannst du diesen mit der Annotation `@Disabled` ausschalten.
- 
-13.	Bei einem Erfolgreichem Build und action durchführung auf Github sollte das Projekt auf Sonar wie folgt aussehen.
-
- ![alt text](sonar11.png)
-
-Nun kannst du die Bugs, Security Review oder Code Smells analysieren. Du findest immer eine Erklärung zum Fehler unter `Why is this an issue`.
- ![alt text](sonar12.png)
-
-### 3.1 Aufgabenstellung
-Analysiere dein Projekt mit Sonarcloud. Falls dein Projekt einen Bug oder Code Smell hat, behebe mindestens drei und führe die Analyse des Projekts nochmals aus und überprüfe, ob der Bug, Security Review oder Code Smell behoben sind.
+Reiche auf Moodle die URL deines privaten GitHub-Repositories mit dem Backend-Code ein und gib es für die Dozierenden frei. Füge die URL der Frontend-Änderungen hinzu, falls das Frontend in einem separaten Repository liegt.
